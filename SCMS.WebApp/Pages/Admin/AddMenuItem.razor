@@ -1,0 +1,88 @@
+﻿@page "/admin/menu/add"
+@attribute [Authorize(Roles = "CanteenManager, SystemAdmin")]
+
+@inject SCMS.WebApp.Services.MenuService WebAppMenuService
+@inject NavigationManager NavigationManager
+@inject SCMS.WebApp.Services.ToastService WebAppToastService
+
+<h3>Thêm món ăn mới</h3>
+
+@if (categories == null)
+{
+    <p><em>Đang tải danh mục...</em></p>
+}
+else
+{
+    <EditForm Model="@newMenuItem" OnValidSubmit="HandleCreateMenuItem">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="mb-3">
+            <label class="form-label">Tên món ăn:</label>
+            <InputText class="form-control" @bind-Value="newMenuItem.Name" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Danh mục:</label>
+            <InputSelect class="form-select" @bind-Value="newMenuItem.CategoryId">
+                <option value="0">-- Vui lòng chọn danh mục --</option>
+                @foreach (var category in categories)
+                {
+                    <option value="@category.CategoryId">@category.CategoryName</option>
+                }
+            </InputSelect>
+            <ValidationMessage For="@(() => newMenuItem.CategoryId)" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Link hình ảnh (URL):</label>
+            <InputText class="form-control" @bind-Value="newMenuItem.ImageUrl" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Mô tả:</label>
+            <InputTextArea class="form-control" @bind-Value="newMenuItem.Description" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Giá (VNĐ):</label>
+            <InputNumber class="form-control" @bind-Value="newMenuItem.Price" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Số lượng tồn kho:</label>
+            <InputNumber class="form-control" @bind-Value="newMenuItem.InventoryQuantity" />
+        </div>
+
+        <button type="submit" class="btn btn-success">Lưu món ăn</button>
+        <button type="button" class="btn btn-secondary" @onclick="GoBack">Hủy</button>
+    </EditForm>
+}
+
+
+@code {
+    private CreateMenuItemDto newMenuItem = new();
+    private List<Category>? categories; // Biến lưu danh sách danh mục
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Tải danh sách danh mục khi trang được khởi tạo
+        categories = await WebAppMenuService.GetCategoriesAsync();
+    }
+
+    private async Task HandleCreateMenuItem()
+    {
+        var result = await WebAppMenuService.CreateMenuItemAsync(newMenuItem);
+        if (result != null)
+        {
+            WebAppToastService.ShowToast("Thêm món ăn thành công!");
+            NavigationManager.NavigateTo("/admin/menu");
+        }
+        else
+        {
+            WebAppToastService.ShowToast("Thêm thất bại. Vui lòng thử lại.", ToastLevel.Danger);
+        }
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/admin/menu");
+    }
+}

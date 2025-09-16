@@ -1,0 +1,121 @@
+﻿@page "/admin/menu/edit/{Id:int}"
+@attribute [Authorize(Roles = "CanteenManager, SystemAdmin")]
+
+@inject SCMS.WebApp.Services.MenuService WebAppMenuService
+@inject NavigationManager NavigationManager
+@inject SCMS.WebApp.Services.ToastService WebAppToastService
+
+<h3>Chỉnh sửa món ăn</h3>
+
+@if (menuItemToUpdate == null || categories == null)
+{
+    <p><em>Đang tải thông tin món ăn...</em></p>
+}
+else
+{
+    <EditForm Model="@menuItemToUpdate" OnValidSubmit="HandleUpdateMenuItem">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="mb-3">
+            <label class="form-label">Tên món ăn:</label>
+            <InputText class="form-control" @bind-Value="menuItemToUpdate.Name" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Danh mục:</label>
+            <InputSelect class="form-select" @bind-Value="menuItemToUpdate.CategoryId">
+                <option value="0">-- Vui lòng chọn danh mục --</option>
+                @foreach (var category in categories)
+                {
+                    <option value="@category.CategoryId">@category.CategoryName</option>
+                }
+            </InputSelect>
+            <ValidationMessage For="@(() => menuItemToUpdate.CategoryId)" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Link hình ảnh (URL):</label>
+            <InputText class="form-control" @bind-Value="menuItemToUpdate.ImageUrl" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Mô tả:</label>
+            <InputTextArea class="form-control" @bind-Value="menuItemToUpdate.Description" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Giá (VNĐ):</label>
+            <InputNumber class="form-control" @bind-Value="menuItemToUpdate.Price" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Số lượng tồn kho:</label>
+            <InputNumber class="form-control" @bind-Value="menuItemToUpdate.InventoryQuantity" />
+        </div>
+
+        <div class="mb-3 form-check">
+            <InputCheckbox class="form-check-input" @bind-Value="menuItemToUpdate.IsAvailable" />
+            <label class="form-check-label">Đang bán</label>
+        </div>
+        <button type="submit" class="btn btn-success">Lưu thay đổi</button>
+        <button type="button" class="btn btn-secondary" @onclick="GoBack">Hủy</button>
+    </EditForm>
+}
+
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private UpdateMenuItemDto? menuItemToUpdate;
+    private List<Category>? categories; // Biến lưu danh sách danh mục
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Tải đồng thời thông tin món ăn và danh sách danh mục
+        var menuItemTask = WebAppMenuService.GetMenuItemByIdAsync(Id);
+        var categoriesTask = WebAppMenuService.GetCategoriesAsync();
+
+        await Task.WhenAll(menuItemTask, categoriesTask);
+
+        var existingItem = await menuItemTask;
+        categories = await categoriesTask;
+
+        if (existingItem != null)
+        {
+            // Chuyển đổi từ MenuItem sang UpdateMenuItemDto để điền vào form
+            menuItemToUpdate = new UpdateMenuItemDto
+                {
+                    Name = existingItem.Name,
+                    Description = existingItem.Description,
+                    Price = existingItem.Price,
+                    InventoryQuantity = existingItem.InventoryQuantity,
+                    // --- BẮT ĐẦU THAY ĐỔI: Gán các giá trị còn thiếu ---
+                    ImageUrl = existingItem.ImageUrl,
+                    CategoryId = existingItem.CategoryId,
+                    IsAvailable = existingItem.IsAvailable
+                    // --- KẾT THÚC THAY ĐỔI ---
+                };
+        }
+    }
+
+    private async Task HandleUpdateMenuItem()
+    {
+        if (menuItemToUpdate != null)
+        {
+            var success = await WebAppMenuService.UpdateMenuItemAsync(Id, menuItemToUpdate);
+            if (success)
+            {
+                WebAppToastService.ShowToast("Cập nhật món ăn thành công!");
+                NavigationManager.NavigateTo("/admin/menu");
+            }
+            else
+            {
+                WebAppToastService.ShowToast("Cập nhật thất bại.", ToastLevel.Danger);
+            }
+        }
+    }
+
+    private void GoBack()
+    {
+        NavigationManager.NavigateTo("/admin/menu");
+    }
+}

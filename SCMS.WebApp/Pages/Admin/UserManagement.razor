@@ -1,0 +1,232 @@
+﻿@page "/admin/users"
+@attribute [Authorize(Roles = "SystemAdmin")]
+
+@inject UserService UserService
+@inject ToastService ToastService
+@inject IJSRuntime JSRuntime
+
+<h3>Quản lý Người dùng</h3>
+
+<button class="btn btn-primary mb-3" @onclick="ShowCreateModal">
+    <span class="oi oi-plus"></span> Thêm người dùng mới
+</button>
+
+@if (users == null)
+{
+    <p><em>Đang tải danh sách...</em></p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead class="thead-dark">
+            <tr>
+                <th>Họ tên</th>
+                <th>Email</th>
+                <th>Vai trò</th>
+                <th style="width: 150px;">Hành động</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var user in users)
+            {
+                <tr>
+                    <td>@user.FullName</td>
+                    <td>@user.Email</td>
+                    <td>@user.Role?.RoleName</td>
+                    <td>
+                        <button class="btn btn-sm btn-warning" @onclick="() => ShowEditModal(user)">Sửa</button>
+                        <button class="btn btn-sm btn-danger" @onclick="() => HandleDeleteUser(user)">Xóa</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@* Modal tạo người dùng *@
+@if (isCreateModalVisible)
+{
+    <div class="modal fade show" style="display:block" role="dialog">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <EditForm Model="newUser" OnValidSubmit="HandleCreateUser">
+                    <DataAnnotationsValidator />
+                    <div class="modal-header">
+                        <h5 class="modal-title">Tạo người dùng mới</h5>
+                        <button type="button" class="close" @onclick="CloseModals">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <ValidationSummary />
+                        <div class="mb-3">
+                            <label class="form-label">Họ và tên:</label>
+                            <InputText class="form-control" @bind-Value="newUser.FullName" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email:</label>
+                            <InputText type="email" class="form-control" @bind-Value="newUser.Email" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Mật khẩu:</label>
+                            <InputText type="password" class="form-control" @bind-Value="newUser.Password" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Vai trò:</label>
+                            <InputSelect class="form-control" @bind-Value="newUser.RoleId">
+                                <option value="0" disabled>-- Chọn vai trò --</option>
+                                <option value="1">Student</option>
+                                <option value="2">Canteen Staff</option>
+                                <option value="3">Canteen Manager</option>
+                            </InputSelect>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseModals">Hủy</button>
+                        <button type="submit" class="btn btn-primary">Tạo người dùng</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@* Modal sửa người dùng *@
+@if (isEditModalVisible)
+{
+    <div class="modal fade show" style="display:block" role="dialog">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <EditForm Model="updateUserDto" OnValidSubmit="HandleUpdateUser">
+                    <DataAnnotationsValidator />
+                    <div class="modal-header">
+                        <h5 class="modal-title">Chỉnh sửa người dùng</h5>
+                        <button type="button" class="close" @onclick="CloseModals">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <ValidationSummary />
+                        <div class="mb-3">
+                            <label class="form-label">Họ và tên:</label>
+                            <InputText class="form-control" @bind-Value="updateUserDto.FullName" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email:</label>
+                            <InputText type="email" class="form-control" @bind-Value="updateUserDto.Email" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Vai trò:</label>
+                            <InputSelect class="form-control" @bind-Value="updateUserDto.RoleId">
+                                <option value="1">Student</option>
+                                <option value="2">Canteen Staff</option>
+                                <option value="3">Canteen Manager</option>
+                            </InputSelect>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseModals">Hủy</button>
+                        <button type="submit" class="btn btn-success">Lưu thay đổi</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+
+@code {
+    private List<User>? users;
+
+    private bool isCreateModalVisible = false;
+    private CreateUserDto newUser = new();
+
+    private bool isEditModalVisible = false;
+    private UpdateUserDto updateUserDto = new();
+    private int userToEditId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUsers();
+    }
+
+    private async Task LoadUsers()
+    {
+        users = await UserService.GetAllUsersAsync();
+        StateHasChanged(); // Báo cho Blazor biết để render lại UI
+    }
+
+    // ----- Create Logic -----
+    private void ShowCreateModal()
+    {
+        newUser = new CreateUserDto { RoleId = 1 }; // Mặc định là Student
+        isCreateModalVisible = true;
+    }
+
+    private async Task HandleCreateUser()
+    {
+        var result = await UserService.CreateUserAsync(newUser);
+        if (result != null)
+        {
+            ToastService.ShowToast("Tạo người dùng thành công!");
+            CloseModals();
+            await LoadUsers();
+        }
+        else
+        {
+            ToastService.ShowToast("Tạo người dùng thất bại. Email có thể đã tồn tại.", ToastLevel.Danger);
+        }
+    }
+
+    // ----- Update Logic -----
+    private void ShowEditModal(User userToEdit)
+    {
+        userToEditId = userToEdit.UserId;
+        updateUserDto = new UpdateUserDto
+            {
+                FullName = userToEdit.FullName,
+                Email = userToEdit.Email,
+                RoleId = userToEdit.RoleId
+            };
+        isEditModalVisible = true;
+    }
+
+    private async Task HandleUpdateUser()
+    {
+        var success = await UserService.UpdateUserAsync(userToEditId, updateUserDto);
+        if (success)
+        {
+            ToastService.ShowToast("Cập nhật thành công!");
+            CloseModals();
+            await LoadUsers();
+        }
+        else
+        {
+            ToastService.ShowToast("Cập nhật thất bại.", ToastLevel.Danger);
+        }
+    }
+
+    // ----- Delete Logic -----
+    private async Task HandleDeleteUser(User userToDelete)
+    {
+        // Sử dụng JS de confirm
+        bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"Bạn có chắc chắn muốn xóa người dùng '{userToDelete.FullName}' không?");
+        if (confirmed)
+        {
+            var success = await UserService.DeleteUserAsync(userToDelete.UserId);
+            if (success)
+            {
+                ToastService.ShowToast("Xóa người dùng thành công!");
+                await LoadUsers(); // Tải lại danh sách
+            }
+            else
+            {
+                ToastService.ShowToast("Xóa thất bại.", ToastLevel.Danger);
+            }
+        }
+    }
+
+    private void CloseModals()
+    {
+        isCreateModalVisible = false;
+        isEditModalVisible = false;
+    }
+}

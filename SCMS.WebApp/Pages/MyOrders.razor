@@ -1,0 +1,145 @@
+﻿@page "/my-orders"
+@attribute [Authorize(Roles = "Student")]
+
+@inject OrderService OrderService
+@inject ToastService ToastService
+
+@if (selectedOrder != null)
+{
+    <div class="modal fade show" style="display:block" aria-modal="true" role="dialog">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Chi tiết Đơn hàng #@selectedOrder.OrderId</h5>
+                    <button type="button" class="btn-close" @onclick="CloseDetailModal"></button>
+                </div>
+                <div class="modal-body">
+                    <p><strong>Ngày đặt:</strong> @selectedOrder.OrderDate.ToLocalTime().ToString("HH:mm dd/MM/yyyy")</p>
+                    <h6>Các món đã đặt:</h6>
+                    <ul>
+                        @foreach (var item in selectedOrder.OrderItems)
+                        {
+                            <li>@item.MenuItem.Name (Số lượng: @item.Quantity)</li>
+                        }
+                    </ul>
+                    <hr />
+                    <p class="h5 text-end"><strong>Tổng tiền: @selectedOrder.TotalPrice.ToString("N0") VNĐ</strong></p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+<h3>Lịch sử Đặt hàng</h3>
+
+@if (orders == null)
+{
+    <p><em>Đang tải lịch sử...</em></p>
+}
+else if (!orders.Any())
+{
+    <p>Bạn chưa đặt đơn hàng nào.</p>
+}
+else
+{
+    <table class="table align-middle">
+        <thead>
+            <tr>
+                <th>Mã Đơn</th>
+                <th>Ngày Đặt</th>
+                <th>Tổng Tiền</th>
+                <th>Trạng thái</th>
+                <th>Hành động</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var order in orders)
+            {
+                <tr>
+                    <td>#@order.OrderId</td>
+                    <td>@order.OrderDate.ToLocalTime().ToString("HH:mm dd/MM/yyyy")</td>
+                    <td>@order.TotalPrice.ToString("N0") VNĐ</td>
+                    <td><span class="badge @GetStatusBadgeClass(order.Status)">@order.Status</span></td>
+                    <td>
+                        <button class="btn btn-info btn-sm" @onclick="() => ShowDetailModal(order)">Xem chi tiết</button>
+
+                        @if (order.Status == "Pending Payment")
+                        {
+                            <button class="btn btn-success btn-sm mx-1" @onclick="() => HandleConfirmPayment(order)">Thanh toán</button>
+                            <button class="btn btn-danger btn-sm" @onclick="() => HandleCancelOrder(order)">Hủy đơn</button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Order>? orders;
+    private Order? selectedOrder; // Biến để lưu đơn hàng đang được xem chi tiết
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOrders();
+    }
+
+    private async Task LoadOrders()
+    {
+        orders = await OrderService.GetMyOrdersAsync();
+    }
+
+    private void ShowDetailModal(Order order)
+    {
+        selectedOrder = order;
+    }
+
+    private void CloseDetailModal()
+    {
+        selectedOrder = null;
+    }
+
+    private async Task HandleConfirmPayment(Order order)
+    {
+        var success = await OrderService.ConfirmPaymentAsync(order.OrderId);
+        if (success)
+        {
+            ToastService.ShowToast("Thanh toán thành công!");
+            await LoadOrders(); // Tải lại danh sách để cập nhật trạng thái
+        }
+        else
+        {
+            ToastService.ShowToast("Thanh toán thất bại.", ToastLevel.Danger);
+        }
+    }
+
+    private async Task HandleCancelOrder(Order order)
+    {
+        var success = await OrderService.CancelOrderAsync(order.OrderId);
+        if (success)
+        {
+            ToastService.ShowToast("Hủy đơn hàng thành công!");
+            order.Status = "Cancelled"; // Cập nhật giao diện ngay lập tức
+            StateHasChanged();
+        }
+        else
+        {
+            ToastService.ShowToast("Hủy đơn hàng thất bại.", ToastLevel.Danger);
+        }
+    }
+
+    private string GetStatusBadgeClass(string status)
+    {
+        return status switch
+        {
+            "Pending Payment" => "bg-warning text-dark",
+            "Paid" => "bg-info text-dark",
+            "Preparing" => "bg-primary",
+            "Ready for Pickup" => "bg-success",
+            "Completed" => "bg-success",
+            "Cancelled" => "bg-danger",
+            _ => "bg-dark"
+        };
+    }
+}

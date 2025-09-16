@@ -1,0 +1,29 @@
+﻿// File: SCMS.Domain/Order.cs
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace SCMS.Domain
+{
+    public class Order
+    {
+        [Key]
+        public int OrderId { get; set; }
+
+        public int UserId { get; set; }
+        [ForeignKey("UserId")]
+        public virtual User User { get; set; }
+
+        public DateTime OrderDate { get; set; }
+
+        [Column(TypeName = "decimal(18, 2)")]
+        public decimal TotalPrice { get; set; }
+
+        [Required]
+        [MaxLength(50)]
+        public string Status { get; set; } // e.g., Pending, Paid, Preparing, Ready, Completed
+
+        public virtual ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
+    }
+}

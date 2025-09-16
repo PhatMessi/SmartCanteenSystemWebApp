@@ -1,0 +1,95 @@
+﻿@page "/cart"
+@attribute [Authorize]
+
+@inject CartService CartService
+@inject OrderService OrderService
+@inject NavigationManager NavigationManager
+@inject ToastService ToastService
+
+<h3>Giỏ hàng của bạn</h3>
+
+@if (!CartService.Items.Any())
+{
+    <p>Giỏ hàng của bạn đang trống. Hãy chọn món trong <a href="/menu">thực đơn</a>!</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Món ăn</th>
+                <th>Đơn giá</th>
+                <th>Số lượng</th>
+                <th>Thành tiền</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in CartService.Items)
+            {
+                <tr>
+                    <td>@item.MenuItemName</td>
+                    <td>@item.Price.ToString("N0")</td>
+                    <td>
+                        <InputNumber @bind-Value="item.Quantity" @oninput="(e) => UpdateQuantity(item, e)" min="1" class="form-control" style="width: 80px;" />
+                    </td>
+                    <td>@((item.Price * item.Quantity).ToString("N0"))</td>
+                    <td>
+                        <button class="btn btn-danger btn-sm" @onclick="() => CartService.RemoveItem(item.MenuItemId)">
+                            <span class="oi oi-trash"></span>
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="3" class="text-end"><strong>Tổng cộng:</strong></td>
+                <td colspan="2"><strong>@CartService.GetTotalPrice().ToString("N0") VNĐ</strong></td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <button class="btn btn-success" @onclick="HandlePlaceOrder">
+        <span class="oi oi-check"></span> Tiến hành Đặt hàng
+    </button>
+}
+
+@code {
+    protected override void OnInitialized()
+    {
+        // Đăng ký sự kiện để UI tự cập nhật khi giỏ hàng thay đổi
+        CartService.OnChange += StateHasChanged;
+    }
+
+    public void Dispose()
+    {
+        // Hủy đăng ký sự kiện để tránh memory leak
+        CartService.OnChange -= StateHasChanged;
+    }
+
+    private void UpdateQuantity(OrderItemDto item, ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int quantity))
+        {
+            CartService.UpdateQuantity(item.MenuItemId, quantity);
+        }
+    }
+
+    private async Task HandlePlaceOrder()
+    {
+        var orderDto = new PlaceOrderRequestDto { Items = CartService.Items };
+        var result = await OrderService.PlaceOrderAsync(orderDto);
+
+        if (result != null)
+        {
+            ToastService.ShowToast("Đặt hàng thành công!");
+            CartService.ClearCart();
+            NavigationManager.NavigateTo("/my-orders");
+        }
+        else
+        {
+            ToastService.ShowToast("Đặt hàng thất bại. Vui lòng thử lại.", ToastLevel.Danger);
+        }
+    }
+}
