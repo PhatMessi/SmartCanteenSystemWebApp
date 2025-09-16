@@ -1,5 +1,4 @@
-﻿// File: SCMS.Infrastructure/ApplicationDbContext.cs
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using SCMS.Domain;
 
 namespace SCMS.Infrastructure
@@ -21,7 +20,6 @@ namespace SCMS.Infrastructure
         {
             base.OnModelCreating(modelBuilder);
 
-            // --- Định nghĩa các vai trò ---
             modelBuilder.Entity<Role>().HasData(
                 new Role { RoleId = 1, RoleName = "Student" },
                 new Role { RoleId = 2, RoleName = "CanteenStaff" },
@@ -29,7 +27,6 @@ namespace SCMS.Infrastructure
                 new Role { RoleId = 4, RoleName = "SystemAdmin" }
             );
 
-            // --- Tài khoản mẫu (đã có) ---
             modelBuilder.Entity<User>().HasData(
                 new User
                 {
