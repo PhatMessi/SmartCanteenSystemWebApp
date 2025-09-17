@@ -7,28 +7,49 @@
     <div class="sidebar">
         <NavMenu />
     </div>
+
     <main>
-        <div class="top-row px-4">
-            <a href="/cart" class="me-auto">
-                <span class="oi oi-cart" style="font-size: 1.5rem;"></span>
-                <span class="badge bg-danger rounded-pill" style="position: relative; top: -10px; left: -10px;">@CartService.Items.Count</span>
-            </a>
-            <AuthorizeView>
-                <Authorized>
-                    <a href="#">Xin chào, @context.User.Identity?.Name!</a>
-                    <a href="/logout">Đăng xuất</a>
-                </Authorized>
-                <NotAuthorized>
-                    <a href="/login">Đăng nhập</a>
-                </NotAuthorized>
-            </AuthorizeView>
-        </div>
+        @* BIẾN TOP-ROW THÀNH MỘT THANH HEADER HOÀN CHỈNH *@
+        <nav class="navbar navbar-light bg-light px-4 shadow-sm">
+            <div class="container-fluid">
+                @* Dùng cho việc thu gọn menu trên mobile *@
+                <button class="navbar-toggler d-md-none" type="button">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                @* GIỎ HÀNG SẼ NẰM Ở ĐÂY (bên trái) *@
+                <a href="/cart" class="nav-link">
+                    <span class="oi oi-cart" style="font-size: 1.5rem; color: var(--primary-color);"></span>
+                    @if (CartService.Items.Any())
+                    {
+                        <span class="badge bg-danger rounded-pill" style="position: relative; top: -12px; left: -10px;">
+                            @CartService.Items.Count
+                        </span>
+                    }
+                </a>
+
+                @* KHỐI ĐĂNG NHẬP SẼ BỊ ĐẨY SANG BÊN PHẢI VỚI ms-auto *@
+                <div class="ms-auto d-flex align-items-center">
+                    <AuthorizeView>
+                        <Authorized>
+                            <a class="navbar-text me-3" href="/">Xin chào, @context.User.Identity?.Name!</a>
+                            <a class="btn btn-outline-secondary btn-sm" href="/logout">Đăng xuất</a>
+                        </Authorized>
+                        <NotAuthorized>
+                            <a class="btn btn-primary btn-sm" href="/login">Đăng nhập</a>
+                        </NotAuthorized>
+                    </AuthorizeView>
+                </div>
+            </div>
+        </nav>
+
         <article class="content px-4">
             @Body
         </article>
     </main>
 </div>
 
+@* Phần Toast Notification giữ nguyên không đổi *@
 @if (toastVisible)
 {
     <div class="toast show @toastCssClass" style="position: fixed; top: 1rem; right: 1rem; z-index: 1050;">
@@ -47,10 +68,23 @@
     private string? toastCssClass;
     private bool toastVisible = false;
 
+    private Action _cartServiceOnChange; // Biến để lưu trữ action
+
     protected override void OnInitialized()
     {
-        CartService.OnChange += StateHasChanged;
+        // Gán lambda có InvokeAsync vào biến
+        _cartServiceOnChange = () => InvokeAsync(StateHasChanged);
+        // Đăng ký sự kiện bằng biến đó
+        CartService.OnChange += _cartServiceOnChange;
+
         ToastService.OnShow += ShowToast;
+    }
+
+    public void Dispose()
+    {
+        // Hủy đăng ký sự kiện bằng biến đó để đảm bảo chính xác
+        CartService.OnChange -= _cartServiceOnChange;
+        ToastService.OnShow -= ShowToast;
     }
 
     // ===== BẮT ĐẦU SỬA LỖI LUỒNG (THREADING) =====
@@ -82,9 +116,4 @@
     }
     // ===== KẾT THÚC SỬA LỖI LUỒNG (THREADING) =====
 
-    public void Dispose()
-    {
-        CartService.OnChange -= StateHasChanged;
-        ToastService.OnShow -= ShowToast;
-    }
 }

@@ -83,6 +83,12 @@ namespace SCMS.Application
             menuItem.CategoryId = menuItemDto.CategoryId;
             menuItem.IsAvailable = menuItemDto.IsAvailable;
 
+            if (!menuItem.IsAvailable)
+            {
+                menuItem.InventoryQuantity = 0;
+            }
+            // ===== KẾT THÚC THAY ĐỔI =====
+
             await _context.SaveChangesAsync();
             return true;
         }

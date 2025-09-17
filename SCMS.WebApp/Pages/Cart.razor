@@ -1,6 +1,7 @@
 ﻿@page "/cart"
 @attribute [Authorize]
 
+@implements IDisposable
 @inject CartService CartService
 @inject OrderService OrderService
 @inject NavigationManager NavigationManager
@@ -56,40 +57,42 @@ else
 }
 
 @code {
+    private Action _cartServiceOnChange;
+
     protected override void OnInitialized()
     {
-        // Đăng ký sự kiện để UI tự cập nhật khi giỏ hàng thay đổi
-        CartService.OnChange += StateHasChanged;
+        _cartServiceOnChange = () => InvokeAsync(StateHasChanged);
+
+        CartService.OnChange += _cartServiceOnChange;
     }
 
     public void Dispose()
     {
-        // Hủy đăng ký sự kiện để tránh memory leak
-        CartService.OnChange -= StateHasChanged;
+        CartService.OnChange -= _cartServiceOnChange;
     }
 
     private void UpdateQuantity(OrderItemDto item, ChangeEventArgs e)
     {
         if (int.TryParse(e.Value?.ToString(), out int quantity))
         {
-            CartService.UpdateQuantity(item.MenuItemId, quantity);
-        }
+            CartService.UpdateQuantity(item.MenuItemId, quantity); 
+    }
     }
 
     private async Task HandlePlaceOrder()
     {
-        var orderDto = new PlaceOrderRequestDto { Items = CartService.Items };
-        var result = await OrderService.PlaceOrderAsync(orderDto);
+       var orderDto = new PlaceOrderRequestDto { Items = CartService.Items };
+    var result = await OrderService.PlaceOrderAsync(orderDto);
 
         if (result != null)
         {
-            ToastService.ShowToast("Đặt hàng thành công!");
-            CartService.ClearCart();
-            NavigationManager.NavigateTo("/my-orders");
+             ToastService.ShowToast("Đặt hàng thành công!");
+             CartService.ClearCart(); 
+             NavigationManager.NavigateTo("/my-orders");
         }
         else
         {
-            ToastService.ShowToast("Đặt hàng thất bại. Vui lòng thử lại.", ToastLevel.Danger);
-        }
+             ToastService.ShowToast("Đặt hàng thất bại. Vui lòng thử lại.", ToastLevel.Danger); 
+    }
     }
 }

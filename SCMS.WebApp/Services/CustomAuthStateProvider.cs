@@ -1,12 +1,14 @@
 ﻿// File: SCMS.WebApp/Services/CustomAuthStateProvider.cs
 using Blazored.LocalStorage;
 using Microsoft.AspNetCore.Components.Authorization;
-using System; // Thêm
+using Blazored.LocalStorage;
+using Microsoft.AspNetCore.Components.Authorization;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Threading.Tasks;
-using System.Collections.Generic; // Thêm
-using System.Linq; // Thêm
 
 namespace SCMS.WebApp.Services
 {
@@ -38,10 +40,25 @@ namespace SCMS.WebApp.Services
             Console.WriteLine("[CustomAuthStateProvider] -> Chuan bi nap token vao TokenService...");
             // =============================================================
 
-            _tokenService.Token = token;
+            try
+            {
+                _tokenService.Token = token;
+                var claimsIdentity = new ClaimsIdentity(ParseClaimsFromJwt(token), "jwtAuthType");
+                var claimsPrincipal = new ClaimsPrincipal(claimsIdentity);
+                return new AuthenticationState(claimsPrincipal);
+            }
+            catch (Exception ex)
+            {
+                // Nếu có bất kỳ lỗi nào khi phân tích token (token hỏng, hết hạn,...)
+                Console.WriteLine($"Lỗi phân tích token: {ex.Message}");
 
-            var claimsIdentity = new ClaimsIdentity(ParseClaimsFromJwt(token), "jwtAuthType");
-            return new AuthenticationState(new ClaimsPrincipal(claimsIdentity));
+                // Xóa token không hợp lệ khỏi bộ nhớ
+                await _localStorage.RemoveItemAsync("authToken");
+                _tokenService.Token = null;
+
+                // Trả về trạng thái chưa đăng nhập
+                return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
+            }
         }
 
         public void NotifyAuthenticationStateChanged()
@@ -57,23 +74,33 @@ namespace SCMS.WebApp.Services
             var jsonBytes = ParseBase64WithoutPadding(payload);
             var keyValuePairs = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonBytes);
 
-            if (keyValuePairs != null)
+            if (keyValuePairs == null) return claims;
+
+            // Xử lý vai trò (roles) một cách an toàn
+            if (keyValuePairs.TryGetValue(ClaimTypes.Role, out object? rolesValue) && rolesValue is JsonElement rolesElement)
             {
-                keyValuePairs.TryGetValue(ClaimTypes.Role, out object roles);
-                if (roles != null)
+                if (rolesElement.ValueKind == JsonValueKind.Array)
                 {
-                    if (roles.ToString().Trim().StartsWith("["))
+                    foreach (var role in rolesElement.EnumerateArray())
                     {
-                        var parsedRoles = JsonSerializer.Deserialize<string[]>(roles.ToString());
-                        foreach (var parsedRole in parsedRoles) claims.Add(new Claim(ClaimTypes.Role, parsedRole));
-                    }
-                    else
-                    {
-                        claims.Add(new Claim(ClaimTypes.Role, roles.ToString()));
+                        claims.Add(new Claim(ClaimTypes.Role, role.ToString()));
                     }
                 }
-                claims.AddRange(keyValuePairs.Select(kvp => new Claim(kvp.Key, kvp.Value.ToString())));
+                else if (rolesElement.ValueKind == JsonValueKind.String)
+                {
+                    claims.Add(new Claim(ClaimTypes.Role, rolesElement.ToString()));
+                }
             }
+
+            // Xử lý các claims khác
+            foreach (var kvp in keyValuePairs)
+            {
+                if (kvp.Value != null)
+                {
+                    claims.Add(new Claim(kvp.Key, kvp.Value.ToString() ?? string.Empty));
+                }
+            }
+
             return claims;
         }
 

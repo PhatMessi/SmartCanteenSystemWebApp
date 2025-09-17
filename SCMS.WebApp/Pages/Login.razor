@@ -2,29 +2,52 @@
 @inject AuthService AuthService
 @inject NavigationManager NavigationManager
 
-<h3>Đăng nhập</h3>
+<PageTitle>Đăng nhập - Smart Canteen</PageTitle>
 
-@if (errorMessage != null)
-{
-    <div class="alert alert-danger">@errorMessage</div>
-}
+<div class="login-container">
+    <div class="login-card">
+        @* Phần tiêu đề của form *@
+        <div class="text-center mb-4">
+            <span class="oi oi-restaurant" style="font-size: 2.5rem; color: var(--primary-color);"></span>
+            <h3 class="mt-2">Đăng nhập Smart Canteen</h3>
+            <p class="text-muted">Chào mừng bạn quay trở lại!</p>
+        </div>
 
-<div class="card">
-    <div class="card-body">
-        <EditForm Model="@loginDto" OnValidSubmit="HandleLogin">
+        @* Thông báo lỗi (nếu có) sẽ hiển thị ở đây *@
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger">@errorMessage</div>
+        }
+
+        <EditForm Model="loginDto" OnValidSubmit="HandleLogin">
             <DataAnnotationsValidator />
 
-            <div class="mb-3">
-                <label class="form-label">Email</label>
-                <InputText class="form-control" @bind-Value="loginDto.Email" />
+            @* Ô nhập Email với Icon *@
+            <div class="input-group mb-3">
+                <span class="input-group-text"><i class="bi bi-envelope-fill"></i></span>
+                <InputText @bind-Value="loginDto.Email" class="form-control" placeholder="Email" />
             </div>
+            <ValidationMessage For="@(() => loginDto.Email)" />
 
-            <div class="mb-3">
-                <label class="form-label">Mật khẩu</label>
-                <InputText type="password" class="form-control" @bind-Value="loginDto.Password" />
+            @* Ô nhập Mật khẩu với Icon *@
+            <div class="input-group mb-4">
+                <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+                <InputText @bind-Value="loginDto.Password" type="password" class="form-control" placeholder="Mật khẩu" />
             </div>
+            <ValidationMessage For="@(() => loginDto.Password)" />
 
-            <button type="submit" class="btn btn-primary">Đăng nhập</button>
+            @* Nút Đăng nhập *@
+            <button disabled="@isSubmitting" type="submit" class="btn btn-primary w-100 py-2">
+                @if (isSubmitting)
+                {
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    <span> Đang xử lý...</span>
+                }
+                else
+                {
+                    <span>Đăng nhập</span>
+                }
+            </button>
         </EditForm>
     </div>
 </div>
@@ -32,19 +55,29 @@
 @code {
     private LoginDto loginDto = new();
     private string? errorMessage;
+    private bool isSubmitting = false; // Biến mới để kiểm soát trạng thái form
 
     private async Task HandleLogin()
     {
         errorMessage = null;
-        var success = await AuthService.LoginAsync(loginDto);
+        isSubmitting = true; // Bắt đầu xử lý, vô hiệu hóa nút
 
-        if (success)
+        try
         {
-            NavigationManager.NavigateTo("/"); // Điều hướng về trang chủ sau khi đăng nhập thành công
+            var success = await AuthService.LoginAsync(loginDto);
+
+            if (success)
+            {
+                NavigationManager.NavigateTo("/", forceLoad: true); // Thêm forceLoad để tải lại toàn bộ layout
+            }
+            else
+            {
+                errorMessage = "Email hoặc mật khẩu không hợp lệ.";
+            }
         }
-        else
+        finally
         {
-            errorMessage = "Email hoặc mật khẩu không hợp lệ.";
+            isSubmitting = false; // Dù thành công hay thất bại, kích hoạt lại nút
         }
     }
 }

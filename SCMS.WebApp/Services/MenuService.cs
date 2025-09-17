@@ -41,7 +41,16 @@ namespace SCMS.WebApp.Services
         // --- PHƯƠNG THỨC MỚI ĐƯỢC THÊM VÀO ---
         public async Task<List<Category>?> GetCategoriesAsync()
         {
-            return await _httpClient.GetFromJsonAsync<List<Category>>("api/Menu/categories");
+            try
+            {
+                return await _httpClient.GetFromJsonAsync<List<Category>>("api/menu/categories");
+            }
+            catch (Exception ex)
+            {
+                // Xử lý lỗi nếu cần
+                Console.WriteLine($"Error fetching categories: {ex.Message}");
+                return new List<Category>();
+            }
         }
 
         // --- CÁC PHƯƠNG THỨC CŨ CHO VIỆC QUẢN LÝ (GIỮ NGUYÊN) ---

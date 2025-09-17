@@ -1,5 +1,4 @@
-﻿// File: SCMS.WebApp/Services/CartService.cs
-using SCMS.Domain;
+﻿using SCMS.Domain;
 using SCMS.Domain.DTOs;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,6 +10,7 @@ namespace SCMS.WebApp.Services
     {
         public List<OrderItemDto> Items { get; private set; } = new();
         public event Action? OnChange;
+
 
         public void AddItem(MenuItem menuItem)
         {
@@ -72,5 +72,5 @@ namespace SCMS.WebApp.Services
         }
 
         private void NotifyStateChanged() => OnChange?.Invoke();
-    }
+    }   
 }

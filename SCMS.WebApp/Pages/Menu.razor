@@ -1,9 +1,12 @@
 ﻿@page "/menu"
 @attribute [AllowAnonymous]
 
+@using SCMS.WebApp.Services
+
 @inject SCMS.WebApp.Services.MenuService WebAppMenuService
 @inject SCMS.WebApp.Services.CartService WebAppCartService
 @inject SCMS.WebApp.Services.ToastService WebAppToastService
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <h3 class="mb-4">Thực đơn Canteen</h3>
 
@@ -38,7 +41,7 @@
 }
 else if (!menuItems.Any())
 {
-    <p><em>Không tìm thấy món ăn nào phù hợp.</em></p>
+    <div class="alert alert-info">Không tìm thấy món ăn nào phù hợp.</div>
 }
 else
 {
@@ -50,12 +53,12 @@ else
                     <img src="@(string.IsNullOrEmpty(item.ImageUrl) ? "https://via.placeholder.com/150" : item.ImageUrl)" class="card-img-top" alt="@item.Name" style="height: 200px; object-fit: cover;">
                     <div class="card-body d-flex flex-column">
                         <h5 class="card-title">@item.Name</h5>
-                        <p class="card-text text-muted small">@item.Description</p>
-                        <p><strong>Tồn kho:</strong> @item.InventoryQuantity</p>
+                        <p class="card-text text-muted">@item.Description</p>
+                        <p class="card-text"><strong>Tồn kho:</strong> @item.InventoryQuantity</p>
                         <div class="mt-auto">
                             <p class="h5 text-danger">@item.Price.ToString("N0") VNĐ</p>
 
-                            <button class="btn btn-success w-100" @onclick="() => AddToCart(item)" disabled="@(item.InventoryQuantity <= 0)">
+                            <button class="btn btn-success w-100" @onclick="async () => await AddToCart(item)" disabled="@(item.InventoryQuantity <= 0)">
                                 @(item.InventoryQuantity > 0 ? "Thêm vào giỏ hàng" : "Hết hàng")
                             </button>
                         </div>
@@ -72,22 +75,46 @@ else
     private string? searchTerm;
     private int selectedCategoryId;
 
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
-        // Tải danh sách categories và menu ban đầu
         categories = await WebAppMenuService.GetCategoriesAsync();
-        await ApplyFilter(); // Gọi ApplyFilter để tải menu ban đầu
+        await ApplyFilter();
     }
 
     private async Task ApplyFilter()
     {
         menuItems = await WebAppMenuService.GetMenuItemsAsync(searchTerm, selectedCategoryId);
-        // StateHasChanged(); // Không cần thiết ở đây vì Blazor tự động render lại sau await
     }
 
-    private void AddToCart(MenuItem item)
+    private async Task AddToCart(MenuItem item)
     {
-        WebAppCartService.AddItem(item); // Sửa tên hàm thành AddItem
-        WebAppToastService.ShowToast($"Đã thêm '{item.Name}' vào giỏ hàng!", ToastLevel.Success);
+        if (AuthenticationStateTask is null)
+        {
+            WebAppToastService.ShowToast("Lỗi xác thực người dùng!", ToastLevel.Danger); // SỬA LỖI: Error -> Danger
+            return;
+        }
+
+        var authState = await AuthenticationStateTask;
+        var user = authState.User;
+
+        if (user.Identity is not null && user.Identity.IsAuthenticated)
+        {
+            if (user.IsInRole("Student") || user.IsInRole("SystemAdmin"))
+            {
+                WebAppCartService.AddItem(item);
+                WebAppToastService.ShowToast($"Đã thêm '{item.Name}' vào giỏ hàng", ToastLevel.Success);
+            }
+            else
+            {
+                WebAppToastService.ShowToast("Bạn không có quyền truy cập!", ToastLevel.Danger); // Giữ lại Warning, đây là tên chuẩn
+            }
+        }
+        else
+        {
+            WebAppToastService.ShowToast("Vui lòng đăng nhập để đặt món!", ToastLevel.Danger); // Giữ lại Info, đây là tên chuẩn
+        }
     }
 }
