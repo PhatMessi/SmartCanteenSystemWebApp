@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SCMS.Infrastructure;
 
@@ -11,9 +12,11 @@ using SCMS.Infrastructure;
 namespace SCMS.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250917150550_AddPasswordResetFieldsToUser")]
+    partial class AddPasswordResetFieldsToUser
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -288,9 +291,6 @@ namespace SCMS.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<bool>("MustChangePassword")
-                        .HasColumnType("bit");
-
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -314,41 +314,37 @@ namespace SCMS.Infrastructure.Migrations
                         new
                         {
                             UserId = 1,
-                            CreatedAt = new DateTime(2025, 9, 18, 2, 17, 17, 516, DateTimeKind.Utc).AddTicks(1135),
+                            CreatedAt = new DateTime(2025, 9, 17, 15, 5, 49, 242, DateTimeKind.Utc).AddTicks(8913),
                             Email = "admin@scms.com",
                             FullName = "System Administrator",
-                            MustChangePassword = false,
-                            PasswordHash = "$2a$11$ZX5973CxeTZzoOKqlIpRouGs0qvcqH1nwnj1mp.R6fFfHCXZ8b7p.",
+                            PasswordHash = "$2a$11$lj4Pr6rMq4bXTcyvvpJDg.JGVhW5D3zbMuPyzQ1P6fm7AkyU92yP2",
                             RoleId = 4
                         },
                         new
                         {
                             UserId = 2,
-                            CreatedAt = new DateTime(2025, 9, 18, 2, 17, 17, 654, DateTimeKind.Utc).AddTicks(6530),
+                            CreatedAt = new DateTime(2025, 9, 17, 15, 5, 49, 379, DateTimeKind.Utc).AddTicks(8434),
                             Email = "canteenmanager@scms.com",
                             FullName = "Canteen Manager",
-                            MustChangePassword = false,
-                            PasswordHash = "$2a$11$L6p5Dt3wtaXm9WyQtgtR1OQEp0JLow40fbVt.kONJxpNntCN5yxwS",
+                            PasswordHash = "$2a$11$gd2b7qwyuv0egoblD8.yauCMIcpJChQq2dtwSFXATbGAS.XX6fshy",
                             RoleId = 3
                         },
                         new
                         {
                             UserId = 6,
-                            CreatedAt = new DateTime(2025, 9, 18, 2, 17, 17, 807, DateTimeKind.Utc).AddTicks(959),
+                            CreatedAt = new DateTime(2025, 9, 17, 15, 5, 49, 530, DateTimeKind.Utc).AddTicks(2360),
                             Email = "student@scms.com",
                             FullName = "Nhat Dung",
-                            MustChangePassword = false,
-                            PasswordHash = "$2a$11$lZkZyyhUk9VL1YFee3s4mOvA6I2vbv3mEidXnqwJ7KIij7lJWA7mW",
+                            PasswordHash = "$2a$11$Wf8v6Zxf5AiofUktm2q1fusVIe1GYssP8yNxY4BHOWq5lgDy0R2aW",
                             RoleId = 1
                         },
                         new
                         {
                             UserId = 7,
-                            CreatedAt = new DateTime(2025, 9, 18, 2, 17, 17, 966, DateTimeKind.Utc).AddTicks(6858),
+                            CreatedAt = new DateTime(2025, 9, 17, 15, 5, 49, 679, DateTimeKind.Utc).AddTicks(291),
                             Email = "staff@scms.com",
                             FullName = "Thien Truong",
-                            MustChangePassword = false,
-                            PasswordHash = "$2a$11$htVnarQWU0rsYkX5L1AlMeyy3icYz.iKFh4bfYbrWjxmrZyQUn4D2",
+                            PasswordHash = "$2a$11$H/l4eBlk1DpitGnKuq/WEuhwyC5odphi8LKmDZf7MHjdNjw0.mHYK",
                             RoleId = 2
                         });
                 });

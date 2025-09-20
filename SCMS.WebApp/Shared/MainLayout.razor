@@ -13,9 +13,9 @@
         <nav class="navbar navbar-light bg-light px-4 shadow-sm">
             <div class="container-fluid">
                 @* Dùng cho việc thu gọn menu trên mobile *@
-                <button class="navbar-toggler d-md-none" type="button">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
+                @* <button class="navbar-toggler d-md-none" type="button"> *@
+                @*     <span class="navbar-toggler-icon"></span> *@
+                @* </button> *@
 
                 @* GIỎ HÀNG SẼ NẰM Ở ĐÂY (bên trái) *@
                 <a href="/cart" class="nav-link">
@@ -33,7 +33,7 @@
                     <AuthorizeView>
                         <Authorized>
                             <a class="navbar-text me-3" href="/">Xin chào, @context.User.Identity?.Name!</a>
-                            <a class="btn btn-outline-secondary btn-sm" href="/logout">Đăng xuất</a>
+                            <a class="btn btn-outline-danger btn-sm" href="/logout">Đăng xuất</a>
                         </Authorized>
                         <NotAuthorized>
                             <a class="btn btn-primary btn-sm" href="/login">Đăng nhập</a>

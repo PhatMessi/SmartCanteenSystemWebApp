@@ -22,22 +22,35 @@
                 <span class="oi oi-list-rich" aria-hidden="true"></span> Thực đơn
             </NavLink>
         </div>
+        @* <AuthorizeView> *@
+        @*     <Authorized> *@
+        @*         <div class="nav-item px-3"> *@
+        @*             <NavLink class="nav-link" href="cart"> *@
+        @*                 <span class="oi oi-cart" aria-hidden="true"></span> Giỏ hàng *@
+        @*             </NavLink> *@
+        @*         </div> *@
+        @*     </Authorized> *@
+        @* </AuthorizeView> *@
+
         <AuthorizeView>
             <Authorized>
                 <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="cart">
-                        <span class="oi oi-cart" aria-hidden="true"></span> Giỏ hàng
+                    <NavLink class="nav-link" href="profile">
+                        <span class="oi oi-person" aria-hidden="true"></span> Hồ sơ của tôi
                     </NavLink>
                 </div>
             </Authorized>
         </AuthorizeView>
 
-
         @* Hiển thị cho người dùng đã đăng nhập (customer) *@
         <AuthorizeView Roles="Student">
+            <li class="nav-item px-3">
+                <hr style="background-color: white;" />
+                <h6 class="text-white-50">Chức năng Học Sinh</h6>
+            </li>
             <div class="nav-item px-3">
                 <NavLink class="nav-link" href="my-orders">
-                    <span class="oi oi-list-rich" aria-hidden="true"></span> Lịch sử Đặt hàng
+                    <span class="oi oi-clock" aria-hidden="true"></span> Lịch sử Đặt hàng
                 </NavLink>
             </div>
         </AuthorizeView>

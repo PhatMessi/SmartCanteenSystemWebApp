@@ -27,5 +27,11 @@ namespace SCMS.Domain
         public virtual Role Role { get; set; } // Navigation Property: Mỗi User có một Role
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        public string? PasswordResetToken { get; set; }
+
+        public DateTime? ResetTokenExpires { get; set; }
+
+        public bool MustChangePassword { get; set; } = false;
     }
 }

@@ -1,5 +1,4 @@
-﻿// File: SCMS.Domain/DTOs/CreateMenuItemDto.cs
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace SCMS.Domain.DTOs
 {
@@ -18,7 +17,7 @@ namespace SCMS.Domain.DTOs
         [Range(0, int.MaxValue)]
         public int InventoryQuantity { get; set; }
 
-        [Required] // Thêm: CategoryId là bắt buộc
+        [Required] 
         public int CategoryId { get; set; }
         public string? ImageUrl { get; set; }
     }

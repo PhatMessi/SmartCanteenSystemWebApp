@@ -3,11 +3,7 @@
 
 @inject UserService UserService
 @inject ToastService ToastService
-@* IJSRuntime không còn cần thiết cho việc xác nhận xóa nữa *@
 
-@* =============================================================== *@
-@* BẮT ĐẦU: Modal xác nhận xóa (Giống hệt trang Quản lý Thực đơn) *@
-@* =============================================================== *@
 @if (isDeleteConfirmModalVisible)
 {
     <div class="modal-backdrop show"></div>
@@ -29,9 +25,6 @@
         </div>
     </div>
 }
-@* =============================================================== *@
-@* KẾT THÚC: Modal xác nhận xóa                                   *@
-@* =============================================================== *@
 
 
 <h3>Quản lý Người dùng</h3>
@@ -76,7 +69,6 @@ else
     </table>
 }
 
-@* Modal tạo người dùng (Giữ nguyên) *@
 @if (isCreateModalVisible)
 {
     <div class="modal fade show" style="display:block" role="dialog">
@@ -99,10 +91,6 @@ else
                             <InputText type="email" class="form-control" @bind-Value="newUser.Email" />
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Mật khẩu:</label>
-                            <InputText type="password" class="form-control" @bind-Value="newUser.Password" />
-                        </div>
-                        <div class="mb-3">
                             <label class="form-label">Vai trò:</label>
                             <InputSelect class="form-control" @bind-Value="newUser.RoleId">
                                 <option value="0" disabled>-- Chọn vai trò --</option>
@@ -123,7 +111,6 @@ else
     <div class="modal-backdrop fade show"></div>
 }
 
-@* Modal sửa người dùng (Giữ nguyên) *@
 @if (isEditModalVisible)
 {
     <div class="modal fade show" style="display:block" role="dialog">
@@ -169,18 +156,13 @@ else
 @code {
     private List<User>? users;
 
-    // ----- Create/Update Modal Logic -----
     private bool isCreateModalVisible = false;
     private CreateUserDto newUser = new();
     private bool isEditModalVisible = false;
     private UpdateUserDto updateUserDto = new();
     private int userToEditId;
-
-    // ----- Delete Modal Logic (Mới) -----
     private bool isDeleteConfirmModalVisible = false;
     private User? userToDelete;
-
-
     protected override async Task OnInitializedAsync()
     {
         await LoadUsers();
@@ -191,10 +173,9 @@ else
         users = await UserService.GetAllUsersAsync();
     }
 
-    // ----- Create Logic (Giữ nguyên) -----
     private void ShowCreateModal()
     {
-        newUser = new CreateUserDto { RoleId = 1 }; // Mặc định là Student
+        newUser = new CreateUserDto { RoleId = 1 }; 
         isCreateModalVisible = true;
     }
 
@@ -203,7 +184,7 @@ else
         var result = await UserService.CreateUserAsync(newUser);
         if (result != null)
         {
-            ToastService.ShowToast("Tạo người dùng thành công!");
+            ToastService.ShowToast("Tạo người dùng thành công! Mật khẩu đã được gửi qua email.");
             CloseModals();
             await LoadUsers();
         }
@@ -213,7 +194,6 @@ else
         }
     }
 
-    // ----- Update Logic (Giữ nguyên) -----
     private void ShowEditModal(User userToEdit)
     {
         userToEditId = userToEdit.UserId;
@@ -241,9 +221,6 @@ else
         }
     }
 
-    // ==========================================================
-    // BẮT ĐẦU: Logic xóa mới (Giống trang Quản lý Thực đơn)
-    // ==========================================================
     private void ShowDeleteConfirm(User user)
     {
         userToDelete = user;
@@ -264,20 +241,15 @@ else
             if (success)
             {
                 ToastService.ShowToast("Xóa người dùng thành công!");
-                users?.Remove(userToDelete); // Tối ưu: xóa khỏi list thay vì tải lại
+                users?.Remove(userToDelete);
             }
             else
             {
                 ToastService.ShowToast("Xóa thất bại.", ToastLevel.Danger);
             }
         }
-        // Ẩn modal sau khi xử lý xong
         HideDeleteConfirm();
     }
-    // ========================================================
-    // KẾT THÚC: Logic xóa mới
-    // ========================================================
-
 
     private void CloseModals()
     {

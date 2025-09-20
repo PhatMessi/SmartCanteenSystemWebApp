@@ -2,12 +2,33 @@
 using Blazored.LocalStorage;
 using Microsoft.AspNetCore.Components.Authorization;
 using SCMS.Domain.DTOs;
-using System; // Thêm
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
+using System.Net.Http.Headers;
+using System.Text.Json.Serialization; // Thêm using này
 
-public class LoginResult { public string? Token { get; set; } }
+// === THAY ĐỔI START ===
+
+// Class này để ánh xạ trực tiếp với JSON trả về từ API
+public class LoginApiResponse
+{
+    [JsonPropertyName("token")]
+    public string? Token { get; set; }
+
+    [JsonPropertyName("mustChangePassword")]
+    public bool MustChangePassword { get; set; }
+}
+
+// Class này là kết quả trả về cho các trang Blazor, đơn giản và rõ ràng
+public class LoginResult
+{
+    public bool Success { get; set; }
+    public bool MustChangePassword { get; set; }
+}
+
+// === THAY ĐỔI END ===
+
 
 namespace SCMS.WebApp.Services
 {
@@ -26,35 +47,85 @@ namespace SCMS.WebApp.Services
             _tokenService = tokenService;
         }
 
-        public async Task<bool> LoginAsync(LoginDto loginDto)
+        // === THAY ĐỔI START ===
+        // Thay đổi kiểu trả về từ Task<bool> thành Task<LoginResult>
+        public async Task<LoginResult> LoginAsync(LoginDto loginDto)
         {
             var response = await _httpClient.PostAsJsonAsync("api/auth/login", loginDto);
-            if (!response.IsSuccessStatusCode) return false;
 
-            var loginResult = await response.Content.ReadFromJsonAsync<LoginResult>();
-            var token = loginResult?.Token;
-            if (string.IsNullOrWhiteSpace(token)) return false;
+            if (!response.IsSuccessStatusCode)
+            {
+                // Nếu API trả về lỗi (vd: 401 Unauthorized), trả về kết quả thất bại
+                return new LoginResult { Success = false, MustChangePassword = false };
+            }
 
-            // =============================================================
-            // === CAMERA GIÁM SÁT SỐ 1: TẠI THỜI ĐIỂM ĐĂNG NHẬP ===
-            // =============================================================
-            Console.WriteLine("\n--- [AuthService] ĐANG NHAP THANH CoNG ---");
-            Console.WriteLine("[AuthService] Đa nhan đuoc token tu API.");
-            Console.WriteLine("[AuthService] -> Chuan bi nap token vao TokenService...");
-            // =============================================================
+            // Đọc nội dung JSON trả về từ API
+            var apiResponse = await response.Content.ReadFromJsonAsync<LoginApiResponse>();
+            if (apiResponse == null || string.IsNullOrWhiteSpace(apiResponse.Token))
+            {
+                // Nếu không có token, coi như thất bại
+                return new LoginResult { Success = false, MustChangePassword = false };
+            }
 
-            await _localStorage.SetItemAsync("authToken", token);
-            _tokenService.Token = token;
-
+            // Lưu token vào Local Storage và thông báo cho hệ thống
+            await _localStorage.SetItemAsync("authToken", apiResponse.Token);
+            _tokenService.Token = apiResponse.Token;
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiResponse.Token);
             ((CustomAuthStateProvider)_authStateProvider).NotifyAuthenticationStateChanged();
-            return true;
+
+            // Trả về kết quả thành công cùng với cờ mustChangePassword
+            return new LoginResult
+            {
+                Success = true,
+                MustChangePassword = apiResponse.MustChangePassword
+            };
         }
+        // === THAY ĐỔI END ===
 
         public async Task LogoutAsync()
         {
             await _localStorage.RemoveItemAsync("authToken");
             _tokenService.Token = null;
+            _httpClient.DefaultRequestHeaders.Authorization = null;
             ((CustomAuthStateProvider)_authStateProvider).NotifyAuthenticationStateChanged();
         }
+
+        // --- Các hàm còn lại giữ nguyên không thay đổi ---
+
+        public async Task<HttpResponseMessage> ForgotPasswordAsync(ForgotPasswordDto dto)
+        {
+            return await _httpClient.PostAsJsonAsync("api/auth/forgot-password", dto);
+        }
+
+        public async Task<HttpResponseMessage> ResetPasswordAsync(ResetPasswordDto dto)
+        {
+            return await _httpClient.PostAsJsonAsync("api/auth/reset-password", dto);
+        }
+
+        public async Task<UserProfile?> GetProfileAsync()
+        {
+            var token = await _localStorage.GetItemAsync<string>("authToken");
+            if (string.IsNullOrEmpty(token)) return null;
+
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            return await _httpClient.GetFromJsonAsync<UserProfile>("api/auth/profile");
+        }
+
+        public async Task<HttpResponseMessage> ChangePasswordAsync(ChangePasswordDto dto)
+        {
+            var token = await _localStorage.GetItemAsync<string>("authToken");
+            if (string.IsNullOrEmpty(token)) return new HttpResponseMessage(System.Net.HttpStatusCode.Unauthorized);
+
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            return await _httpClient.PostAsJsonAsync("api/auth/change-password", dto);
+        }
+    }
+
+    // Class UserProfile giữ nguyên
+    public class UserProfile
+    {
+        public string FullName { get; set; }
+        public string Email { get; set; }
+        public string Role { get; set; }
     }
 }

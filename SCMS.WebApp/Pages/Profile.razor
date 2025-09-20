@@ -1,0 +1,112 @@
+﻿@page "/profile"
+@attribute [Authorize]
+@inject AuthService AuthService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Hồ sơ của tôi</PageTitle>
+
+<h3>Hồ sơ cá nhân</h3>
+
+@if (userProfile == null)
+{
+    <p><em>Đang tải hồ sơ...</em></p>
+}
+else
+{
+    <div class="card mb-4">
+        <div class="card-header">Thông tin tài khoản</div>
+        <div class="card-body">
+            <p><strong>Họ và tên:</strong> @userProfile.FullName</p>
+            <p><strong>Email:</strong> @userProfile.Email</p>
+            <p><strong>Vai trò:</strong> @userProfile.Role</p>
+        </div>
+    </div>
+}
+
+<div class="card">
+    <div class="card-header">Đổi mật khẩu</div>
+    <div class="card-body">
+        @if (!string.IsNullOrEmpty(changePasswordMessage))
+        {
+            <div class="alert @(changePasswordSuccess ? "alert-success" : "alert-danger")">@changePasswordMessage</div>
+        }
+
+        <EditForm Model="changePasswordDto" OnValidSubmit="HandleChangePassword">
+            <DataAnnotationsValidator />
+
+            <div class="mb-3">
+                <label>Mật khẩu cũ</label>
+                <InputText @bind-Value="changePasswordDto.OldPassword" type="password" class="form-control" />
+                <ValidationMessage For="@(() => changePasswordDto.OldPassword)" />
+            </div>
+
+            <div class="mb-3">
+                <label>Mật khẩu mới</label>
+                <InputText @bind-Value="changePasswordDto.NewPassword" type="password" class="form-control" />
+                <ValidationMessage For="@(() => changePasswordDto.NewPassword)" />
+            </div>
+
+            <div class="mb-3">
+                <label>Xác nhận mật khẩu mới</label>
+                <InputText @bind-Value="confirmPassword" type="password" class="form-control" />
+            </div>
+
+            <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+                @if (isSubmitting)
+                {
+                    <span class="spinner-border spinner-border-sm"></span>
+                }
+                Lưu thay đổi
+            </button>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private UserProfile? userProfile;
+    private ChangePasswordDto changePasswordDto = new();
+    private string confirmPassword = "";
+    private string? changePasswordMessage;
+    private bool changePasswordSuccess = false;
+    private bool isSubmitting = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        userProfile = await AuthService.GetProfileAsync();
+    }
+
+    private async Task HandleChangePassword()
+    {
+        changePasswordMessage = null;
+
+        if (changePasswordDto.NewPassword != confirmPassword)
+        {
+            changePasswordMessage = "Mật khẩu mới và mật khẩu xác nhận không khớp.";
+            changePasswordSuccess = false;
+            return;
+        }
+
+        isSubmitting = true;
+
+        var response = await AuthService.ChangePasswordAsync(changePasswordDto);
+        if (response.IsSuccessStatusCode)
+        {
+            changePasswordSuccess = true;
+            changePasswordMessage = "Đổi mật khẩu thành công! Vui lòng đăng nhập lại.";
+            changePasswordDto = new(); // Clear the form
+            confirmPassword = "";
+
+            // Đăng xuất sau khi đổi mật khẩu thành công
+            await Task.Delay(2000); // Chờ 2 giây để người dùng đọc thông báo
+            await AuthService.LogoutAsync();
+            NavigationManager.NavigateTo("/login");
+        }
+        else
+        {
+            changePasswordSuccess = false;
+            changePasswordMessage = "Mật khẩu cũ không đúng. Vui lòng thử lại.";
+        }
+
+        isSubmitting = false;
+    }
+}

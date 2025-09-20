@@ -12,6 +12,7 @@ using System.Text.Json.Serialization;
 using Microsoft.OpenApi.Models;
 using SCMS.API.Middleware;
 using Serilog;
+using SCMS.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog((context, configuration) =>
@@ -61,6 +62,7 @@ builder.Services.AddScoped<IMenuService, MenuService>();
 builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<ReportService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
