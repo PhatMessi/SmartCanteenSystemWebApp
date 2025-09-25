@@ -1,4 +1,4 @@
-﻿// File: SCMS.Application/IMenuService.cs
+﻿
 using SCMS.Domain;
 using SCMS.Domain.DTOs;
 using System.Collections.Generic;
