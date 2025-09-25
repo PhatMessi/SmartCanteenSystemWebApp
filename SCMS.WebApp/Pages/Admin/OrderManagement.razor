@@ -22,7 +22,17 @@ else
             <div class="accordion-item">
                 <h2 class="accordion-header" id="heading-@order.OrderId">
                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-@order.OrderId">
-                        Đơn hàng #@order.OrderId - @order.OrderDate.ToLocalTime().ToString("HH:mm dd/MM/yyyy") - <span class="badge @GetStatusBadgeClass(order.Status) ms-2">@order.Status</span>
+                        <div class="flex-grow-1">
+                            Đơn hàng #@order.OrderId - @order.OrderDate.ToLocalTime().ToString("HH:mm dd/MM/yyyy")
+                            @if (order.PickupTime.HasValue)
+                            {
+                                <strong class="text-danger ms-2">
+                                    (Nhận lúc: @order.PickupTime.Value.ToLocalTime().ToString("HH:mm"))
+                                </strong>
+                            }
+                        </div>
+
+                        <span class="badge @GetStatusBadgeClass(order.Status) me-4">@order.Status</span>
                     </button>
                 </h2>
                 <div id="collapse-@order.OrderId" class="accordion-collapse collapse" data-bs-parent="#ordersAccordion">
@@ -92,26 +102,19 @@ else
     private async Task HandleStatusChange(Order order, string newStatus)
     {
         if (string.IsNullOrEmpty(newStatus)) return;
-
-        // Nhận về đối tượng order mới, đã được cập nhật đầy đủ từ API
         var updatedOrder = await OrderService.UpdateOrderStatusAsync(order.OrderId, newStatus);
-
         if (updatedOrder != null)
         {
             ToastService.ShowToast($"Cập nhật đơn hàng #{order.OrderId} thành công!");
-
-            // Tìm vị trí của đơn hàng cũ trong danh sách
             var index = orders.FindIndex(o => o.OrderId == order.OrderId);
             if (index != -1)
             {
                 if (updatedOrder.Status == "Completed" || updatedOrder.Status == "Cancelled")
                 {
-                    // Nếu đã hoàn thành/hủy thì xóa khỏi danh sách
                     orders.RemoveAt(index);
                 }
                 else
                 {
-                    // Nếu chưa, thay thế đơn hàng cũ bằng đơn hàng mới đã có đầy đủ OrderItems
                     orders[index] = updatedOrder;
                 }
             }
