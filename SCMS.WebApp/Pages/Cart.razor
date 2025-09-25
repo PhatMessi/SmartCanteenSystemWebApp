@@ -6,8 +6,18 @@
 @inject OrderService OrderService
 @inject NavigationManager NavigationManager
 @inject ToastService ToastService
+@inject ConfirmDialogService DialogService
 
-<h3>Giỏ hàng của bạn</h3>
+@* THAY ĐỔI TIÊU ĐỀ DỰA TRÊN CHẾ ĐỘ *@
+@if (CartService.EditingOrderId.HasValue)
+{
+    <h3>Chỉnh sửa Đơn hàng #@CartService.EditingOrderId</h3>
+}
+else
+{
+    <h3>Giỏ hàng của bạn</h3>
+}
+
 
 @if (!CartService.Items.Any())
 {
@@ -16,6 +26,7 @@
 else
 {
     <table class="table">
+        @* ... Toàn bộ table không thay đổi ... *@
         <thead>
             <tr>
                 <th>Món ăn</th>
@@ -51,19 +62,37 @@ else
         </tfoot>
     </table>
 
-    <button class="btn btn-success" @onclick="HandlePlaceOrder">
-        <span class="oi oi-check"></span> Tiến hành Đặt hàng
+    <div class="mb-3">
+        <label for="pickupTime" class="form-label"><strong>Chọn thời gian nhận hàng (để trống nếu nhận ngay):</strong></label>
+        <input type="datetime-local" id="pickupTime" class="form-control" @bind="pickupTime" />
+        <small class="form-text text-muted">Nếu bạn đặt trước, phí hủy đơn sẽ được tính dựa trên thời gian nhận hàng.</small>
+    </div>
+    <button class="btn @(CartService.EditingOrderId.HasValue ? "btn-primary" : "btn-success")" @onclick="HandleSubmitOrder">
+        @if (CartService.EditingOrderId.HasValue)
+        {
+            <span class="oi oi-loop-circular"></span>
+            <span> Cập nhật Đơn hàng</span>
+        }
+        else
+        {
+            <span class="oi oi-check"></span>
+            <span> Tiến hành Đặt hàng</span>
+        }
     </button>
+
 }
 
 @code {
     private Action _cartServiceOnChange;
+    private DateTime? pickupTime;
 
     protected override void OnInitialized()
     {
         _cartServiceOnChange = () => InvokeAsync(StateHasChanged);
-
         CartService.OnChange += _cartServiceOnChange;
+
+        // Nếu đang ở chế độ chỉnh sửa, ta không muốn hiển thị thời gian nhận hàng cũ.
+        // Người dùng phải chọn lại. Nếu không, tính năng đặt trước vẫn hoạt động bình thường.
     }
 
     public void Dispose()
@@ -75,24 +104,59 @@ else
     {
         if (int.TryParse(e.Value?.ToString(), out int quantity))
         {
-            CartService.UpdateQuantity(item.MenuItemId, quantity); 
-    }
-    }
-
-    private async Task HandlePlaceOrder()
-    {
-       var orderDto = new PlaceOrderRequestDto { Items = CartService.Items };
-    var result = await OrderService.PlaceOrderAsync(orderDto);
-
-        if (result != null)
-        {
-             ToastService.ShowToast("Đặt hàng thành công!");
-             CartService.ClearCart(); 
-             NavigationManager.NavigateTo("/my-orders");
+            CartService.UpdateQuantity(item.MenuItemId, quantity);
         }
-        else
-        {
-             ToastService.ShowToast("Đặt hàng thất bại. Vui lòng thử lại.", ToastLevel.Danger); 
     }
+
+    // THAY THẾ HOÀN TOÀN PHƯƠNG THỨC `HandlePlaceOrder` BẰNG PHƯƠNG THỨC NÀY
+    private async Task HandleSubmitOrder()
+    {
+        bool isEditing = CartService.EditingOrderId.HasValue;
+        string title = isEditing ? "Xác nhận cập nhật" : "Xác nhận đặt hàng";
+        string message = isEditing
+            ? $"Bạn có chắc chắn muốn cập nhật các thay đổi cho đơn hàng #{CartService.EditingOrderId.Value} không?"
+            : "Bạn có chắc chắn muốn đặt hàng không?";
+
+        // Hiển thị popup và chờ kết quả
+        if (await DialogService.Show(title, message))
+        {
+            var orderDto = new PlaceOrderRequestDto
+                {
+                    Items = CartService.Items,
+                    PickupTime = pickupTime
+                };
+            bool success = false;
+            string successMessage = "";
+
+            if (isEditing)
+            {
+                var result = await OrderService.UpdateOrderAsync(CartService.EditingOrderId.Value, orderDto);
+                if (result != null)
+                {
+                    success = true;
+                    successMessage = $"Cập nhật đơn hàng #{CartService.EditingOrderId.Value} thành công!";
+                }
+            }
+            else
+            {
+                var result = await OrderService.PlaceOrderAsync(orderDto);
+                if (result != null)
+                {
+                    success = true;
+                    successMessage = "Đặt hàng thành công!";
+                }
+            }
+
+            if (success)
+            {
+                ToastService.ShowToast(successMessage);
+                CartService.ClearCart();
+                NavigationManager.NavigateTo("/my-orders");
+            }
+            else
+            {
+                ToastService.ShowToast("Thao tác thất bại. Vui lòng thử lại.", ToastLevel.Danger);
+            }
+        }
     }
 }

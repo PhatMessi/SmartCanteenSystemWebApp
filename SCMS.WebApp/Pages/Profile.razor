@@ -2,6 +2,8 @@
 @attribute [Authorize]
 @inject AuthService AuthService
 @inject NavigationManager NavigationManager
+@inject SCMS.WebApp.Services.UserService WebUserService
+@inject SCMS.WebApp.Services.WalletService WebWalletService
 
 <PageTitle>Hồ sơ của tôi</PageTitle>
 
@@ -21,6 +23,68 @@ else
             <p><strong>Vai trò:</strong> @userProfile.Role</p>
         </div>
     </div>
+
+    <AuthorizeView Roles="Student, Parent">
+        <div class="card mb-4">
+            <div class="card-header">Ví điện tử</div>
+            <div class="card-body">
+                @if (wallet == null)
+                {
+                    <p><em>Đang tải thông tin ví...</em></p>
+                }
+                else
+                {
+                    <h4>Số dư: @wallet.Balance.ToString("N0") VND</h4>
+                    <a href="/wallet" class="btn btn-info">Quản lý ví & Lịch sử giao dịch</a>
+                }
+            </div>
+        </div>
+    </AuthorizeView>
+
+    <AuthorizeView Roles="Student">
+        <div class="card mb-4">
+            <div class="card-header">Liên kết tài khoản phụ huynh</div>
+            <div class="card-body">
+                @if (isLoadingLink)
+                {
+                    <p><em>Đang kiểm tra liên kết...</em></p>
+                }
+                else if (linkedParent != null)
+                {
+                    <h5>Đã liên kết với:</h5>
+                    <p><strong>Họ tên:</strong> @linkedParent.FullName</p>
+                    <p><strong>Email:</strong> @linkedParent.Email</p>
+                    <button class="btn btn-danger" @onclick="HandleUnlinkParent" disabled="@isLinkingInProgress">
+                        @if (isLinkingInProgress)
+                        {
+                            <span class="spinner-border spinner-border-sm"></span>
+                        }
+                        Hủy liên kết
+                    </button>
+                }
+                else
+                {
+                    <h5>Chưa có liên kết</h5>
+                    <p>Nhập email của phụ huynh để gửi yêu cầu liên kết.</p>
+                    <div class="input-group">
+                        <input type="email" class="form-control" placeholder="Email của phụ huynh" @bind="parentEmailToLink" />
+                        <button class="btn btn-primary" @onclick="HandleLinkParent" disabled="@isLinkingInProgress">
+                            @if (isLinkingInProgress)
+                            {
+                                <span class="spinner-border spinner-border-sm"></span>
+                            }
+                            Gửi yêu cầu
+                        </button>
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(linkMessage))
+                {
+                    <div class="alert @(linkSuccess ? "alert-success" : "alert-danger") mt-3">@linkMessage</div>
+                }
+            </div>
+        </div>
+    </AuthorizeView>
 }
 
 <div class="card">
@@ -64,21 +128,74 @@ else
 
 @code {
     private UserProfile? userProfile;
+    private WalletDto? wallet;
     private ChangePasswordDto changePasswordDto = new();
     private string confirmPassword = "";
     private string? changePasswordMessage;
     private bool changePasswordSuccess = false;
     private bool isSubmitting = false;
+    private ParentLinkDetailsDto? linkedParent;
+    private bool isLoadingLink = true;
+    private string parentEmailToLink = "";
+    private string? linkMessage;
+    private bool linkSuccess = false;
+    private bool isLinkingInProgress = false;
+    private bool isPasswordChangeInProgress = false;
 
     protected override async Task OnInitializedAsync()
     {
-        userProfile = await AuthService.GetProfileAsync();
+        isLoadingLink = true;
+        var profileTask = AuthService.GetProfileAsync();
+        var walletTask = WebWalletService.GetWalletAsync();
+        var parentTask = WebUserService.GetLinkedParentAsync();
+
+        await Task.WhenAll(profileTask, walletTask, parentTask);
+
+        userProfile = profileTask.Result;
+        wallet = walletTask.Result;
+        linkedParent = parentTask.Result;
+        isLoadingLink = false;
+    }
+
+    private async Task HandleLinkParent()
+    {
+        // --- THAY ĐỔI 2: Cập nhật phương thức ---
+        isLinkingInProgress = true;
+        linkMessage = null;
+
+        var request = new LinkParentRequestDto { ParentEmail = parentEmailToLink };
+        var result = await WebUserService.LinkParentAsync(request);
+        linkSuccess = result.Success;
+        linkMessage = result.Message;
+
+        if (linkSuccess)
+        {
+            linkedParent = await WebUserService.GetLinkedParentAsync();
+            parentEmailToLink = "";
+        }
+        isLinkingInProgress = false;
+    }
+
+    private async Task HandleUnlinkParent()
+    {
+        // --- THAY ĐỔI 2: Cập nhật phương thức ---
+        isLinkingInProgress = true;
+        linkMessage = null;
+
+        var result = await WebUserService.UnlinkParentAsync();
+        linkSuccess = result.Success;
+        linkMessage = result.Message;
+
+        if (linkSuccess)
+        {
+            linkedParent = null;
+        }
+        isLinkingInProgress = false;
     }
 
     private async Task HandleChangePassword()
     {
         changePasswordMessage = null;
-
         if (changePasswordDto.NewPassword != confirmPassword)
         {
             changePasswordMessage = "Mật khẩu mới và mật khẩu xác nhận không khớp.";
@@ -86,18 +203,17 @@ else
             return;
         }
 
-        isSubmitting = true;
+        // --- THAY ĐỔI 2: Cập nhật phương thức ---
+        isPasswordChangeInProgress = true;
 
         var response = await AuthService.ChangePasswordAsync(changePasswordDto);
         if (response.IsSuccessStatusCode)
         {
             changePasswordSuccess = true;
             changePasswordMessage = "Đổi mật khẩu thành công! Vui lòng đăng nhập lại.";
-            changePasswordDto = new(); // Clear the form
+            changePasswordDto = new();
             confirmPassword = "";
-
-            // Đăng xuất sau khi đổi mật khẩu thành công
-            await Task.Delay(2000); // Chờ 2 giây để người dùng đọc thông báo
+            await Task.Delay(2000);
             await AuthService.LogoutAsync();
             NavigationManager.NavigateTo("/login");
         }
@@ -107,6 +223,6 @@ else
             changePasswordMessage = "Mật khẩu cũ không đúng. Vui lòng thử lại.";
         }
 
-        isSubmitting = false;
+        isPasswordChangeInProgress = false;
     }
 }

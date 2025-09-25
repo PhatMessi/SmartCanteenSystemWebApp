@@ -3,6 +3,9 @@
 
 @inject OrderService OrderService
 @inject ToastService ToastService
+@inject CartService CartService
+@inject NavigationManager NavigationManager
+@inject ConfirmDialogService DialogService
 
 @if (selectedOrder != null)
 {
@@ -58,7 +61,15 @@ else
             {
                 <tr>
                     <td>#@order.OrderId</td>
-                    <td>@order.OrderDate.ToLocalTime().ToString("HH:mm dd/MM/yyyy")</td>
+                    <td>
+                        @order.OrderDate.ToLocalTime().ToString("HH:mm dd/MM/yyyy")
+                        @if (order.PickupTime.HasValue)
+                        {
+                            <br />
+
+                            <small class="text-primary">Nhận lúc: @order.PickupTime.Value.ToLocalTime().ToString("HH:mm dd/MM/yyyy")</small>
+                        }
+                    </td>
                     <td>@order.TotalPrice.ToString("N0") VNĐ</td>
                     <td><span class="badge @GetStatusBadgeClass(order.Status)">@order.Status</span></td>
                     <td>
@@ -67,6 +78,12 @@ else
                         @if (order.Status == "Pending Payment")
                         {
                             <button class="btn btn-success btn-sm mx-1" @onclick="() => HandleConfirmPayment(order)">Thanh toán</button>
+                            <button class="btn btn-warning btn-sm mx-1" @onclick="() => EditOrder(order)">Chỉnh sửa</button>
+                        }
+
+                        @* CHỈ HIỂN THỊ NÚT HỦY KHI ĐƠN HÀNG ĐÃ ĐƯỢC THANH TOÁN (Status == "Paid") *@
+                        @if (order.Status == "Paid")
+                        {
                             <button class="btn btn-danger btn-sm" @onclick="() => HandleCancelOrder(order)">Hủy đơn</button>
                         }
                     </td>
@@ -102,30 +119,41 @@ else
 
     private async Task HandleConfirmPayment(Order order)
     {
-        var success = await OrderService.ConfirmPaymentAsync(order.OrderId);
-        if (success)
+        if (await DialogService.Show("Xác nhận Thanh toán", $"Bạn có chắc chắn muốn thanh toán cho đơn hàng #{order.OrderId}?"))
         {
-            ToastService.ShowToast("Thanh toán thành công!");
-            await LoadOrders(); // Tải lại danh sách để cập nhật trạng thái
-        }
-        else
-        {
-            ToastService.ShowToast("Thanh toán thất bại.", ToastLevel.Danger);
+            var result = await OrderService.ConfirmOrderPaymentAsync(order.OrderId);
+            if (result.Success)
+            {
+                ToastService.ShowToast(result.Message, ToastLevel.Success);
+                await LoadOrders();
+            }
+            else
+            {
+                ToastService.ShowToast(result.Message, ToastLevel.Danger);
+            }
         }
     }
 
     private async Task HandleCancelOrder(Order order)
     {
-        var success = await OrderService.CancelOrderAsync(order.OrderId);
-        if (success)
+        string message = $"Bạn có chắc chắn muốn hủy đơn hàng #{order.OrderId} không?";
+        if (order.PickupTime.HasValue && order.PickupTime.Value.ToLocalTime().Subtract(DateTime.Now).TotalMinutes < 30)
         {
-            ToastService.ShowToast("Hủy đơn hàng thành công!");
-            order.Status = "Cancelled"; // Cập nhật giao diện ngay lập tức
-            StateHasChanged();
+            message += "\n\n<b>LƯU Ý:</b> Đơn hàng đã gần đến giờ nhận. Việc hủy có thể sẽ bị tính phí.";
         }
-        else
+
+        if (await DialogService.Show("Xác nhận Hủy đơn", message))
         {
-            ToastService.ShowToast("Hủy đơn hàng thất bại.", ToastLevel.Danger);
+            var result = await OrderService.CancelOrderAsync(order.OrderId);
+            if (result.Success)
+            {
+                ToastService.ShowToast(result.Message, ToastLevel.Success);
+                await LoadOrders();
+            }
+            else
+            {
+                ToastService.ShowToast(result.Message, ToastLevel.Danger);
+            }
         }
     }
 
@@ -141,5 +169,12 @@ else
             "Cancelled" => "bg-danger",
             _ => "bg-dark"
         };
+    }
+    private void EditOrder(Order order)
+    {
+        // Sử dụng service để nạp các món ăn của đơn hàng vào giỏ
+        CartService.LoadOrderForEditing(order);
+        // Điều hướng người dùng đến trang giỏ hàng
+        NavigationManager.NavigateTo("/cart");
     }
 }
