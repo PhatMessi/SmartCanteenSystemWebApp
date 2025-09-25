@@ -1,5 +1,4 @@
-﻿// File: SCMS.Application/OrderService.cs
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using SCMS.Domain.DTOs;
 using SCMS.Domain;
 using SCMS.Infrastructure;
