@@ -73,12 +73,15 @@ namespace SCMS.API.Controllers
         public async Task<IActionResult> ConfirmPayment(int orderId)
         {
             var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-            var updatedOrder = await _orderService.ConfirmOrderPaymentAsync(orderId, userId);
-            if (updatedOrder == null)
+
+            var result = await _orderService.ConfirmOrderPaymentAsync(orderId, userId);
+
+            if (!result.Success)
             {
-                return NotFound($"Order with ID {orderId} not found.");
+                return BadRequest(new { message = result.Message });
             }
-            return Ok(updatedOrder);
+
+            return Ok(new { message = result.Message });
         }
 
         [HttpPost("{orderId}/cancel")]
@@ -86,12 +89,14 @@ namespace SCMS.API.Controllers
         public async Task<IActionResult> CancelOrder(int orderId)
         {
             var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-            var success = await _orderService.CancelOrderAsync(orderId, userId);
-            if (!success)
+            var result = await _orderService.CancelOrderAsync(orderId, userId);
+
+            if (!result.Success)
             {
-                return BadRequest("Không thể hủy đơn hàng.");
+                return BadRequest(new { message = result.Message });
             }
-            return Ok(new { message = "Hủy đơn hàng thành công." });
+            // Trả về message thành công
+            return Ok(new { message = result.Message });
         }
 
         [HttpGet("history")]
@@ -100,6 +105,30 @@ namespace SCMS.API.Controllers
         {
             var orders = await _orderService.GetAllOrdersAsync();
             return Ok(orders);
+        }
+        [HttpPut("{orderId}")]
+        //[Authorize(Roles = "Student")]
+        public async Task<IActionResult> UpdateOrder(int orderId, PlaceOrderRequestDto updatedOrderDto)
+        {
+            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var result = await _orderService.UpdatePendingOrderAsync(orderId, userId, updatedOrderDto);
+
+            if (!result.Success)
+            {
+                // Sử dụng switch để trả về mã lỗi phù hợp hơn
+                switch (result.ErrorCode)
+                {
+                    case "NOT_FOUND":
+                        return NotFound(new { message = result.Message });
+                    case "INVALID_STATUS":
+                    case "OUT_OF_STOCK":
+                        return BadRequest(new { message = result.Message });
+                    default:
+                        return StatusCode(500, new { message = result.Message });
+                }
+            }
+
+            return Ok(result.UpdatedOrder); // Trả về đơn hàng đã được cập nhật
         }
     }
 }

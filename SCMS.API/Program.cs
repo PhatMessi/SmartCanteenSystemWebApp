@@ -62,6 +62,7 @@ builder.Services.AddScoped<IMenuService, MenuService>();
 builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<ReportService>();
+builder.Services.AddScoped<IWalletService, WalletService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
