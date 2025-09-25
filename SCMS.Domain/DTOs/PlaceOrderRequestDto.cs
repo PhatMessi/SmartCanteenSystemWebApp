@@ -7,5 +7,6 @@ namespace SCMS.Domain.DTOs
     {
         // UserId đã được xóa
         public List<OrderItemDto> Items { get; set; }
+        public DateTime? PickupTime { get; set; }
     }
 }

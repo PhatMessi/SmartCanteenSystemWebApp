@@ -25,6 +25,21 @@ namespace SCMS.Domain
 
         [ForeignKey("RoleId")] // Chỉ rõ RoleId là khóa ngoại cho Role
         public virtual Role Role { get; set; } // Navigation Property: Mỗi User có một Role
+        // Foreign key cho tài khoản phụ huynh
+        public int? ParentId { get; set; }
+        [ForeignKey("ParentId")]
+        public virtual User Parent { get; set; }
+
+        // Foreign key cho tài khoản giáo viên chủ nhiệm
+        public int? HeadTeacherId { get; set; }
+        [ForeignKey("HeadTeacherId")]
+        public virtual User HeadTeacher { get; set; }
+
+        // Một phụ huynh có thể liên kết với nhiều học sinh
+        public virtual ICollection<User> LinkedStudents { get; set; } = new List<User>();
+
+        // Quan hệ một-một với Wallet
+        public virtual Wallet Wallet { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

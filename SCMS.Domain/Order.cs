@@ -16,6 +16,7 @@ namespace SCMS.Domain
         public virtual User User { get; set; }
 
         public DateTime OrderDate { get; set; }
+        public DateTime? PickupTime { get; set; }
 
         [Column(TypeName = "decimal(18, 2)")]
         public decimal TotalPrice { get; set; }
