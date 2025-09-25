@@ -11,11 +11,30 @@ namespace SCMS.WebApp.Services
         public List<OrderItemDto> Items { get; private set; } = new();
         public event Action? OnChange;
 
+        // BIẾN MỚI: Lưu ID của đơn hàng đang được sửa
+        public int? EditingOrderId { get; private set; }
+
+        // PHƯƠNG THỨC MỚI: Tải một đơn hàng vào giỏ để chỉnh sửa
+        public void LoadOrderForEditing(Order orderToEdit)
+        {
+            Items.Clear();
+            EditingOrderId = orderToEdit.OrderId;
+
+            // Nạp các món ăn từ đơn hàng cũ vào giỏ hàng
+            Items.AddRange(orderToEdit.OrderItems.Select(oi => new OrderItemDto
+            {
+                MenuItemId = oi.MenuItem.ItemId,
+                Quantity = oi.Quantity,
+                Price = oi.PriceAtTimeOfOrder,
+                MenuItemName = oi.MenuItem.Name
+            }));
+
+            NotifyStateChanged();
+        }
 
         public void AddItem(MenuItem menuItem)
         {
             var existingItem = Items.FirstOrDefault(i => i.MenuItemId == menuItem.ItemId);
-
             if (existingItem != null)
             {
                 existingItem.Quantity++;
@@ -63,6 +82,8 @@ namespace SCMS.WebApp.Services
         public void ClearCart()
         {
             Items.Clear();
+            // Reset luôn trạng thái chỉnh sửa khi xóa giỏ hàng
+            EditingOrderId = null;
             NotifyStateChanged();
         }
 
@@ -72,5 +93,5 @@ namespace SCMS.WebApp.Services
         }
 
         private void NotifyStateChanged() => OnChange?.Invoke();
-    }   
+    }
 }

@@ -32,7 +32,7 @@
                 <div class="ms-auto d-flex align-items-center">
                     <AuthorizeView>
                         <Authorized>
-                            <a class="navbar-text me-3" href="/">Xin chào, @context.User.Identity?.Name!</a>
+                            <a class="navbar-text me-3" href="/profile">Xin chào, @context.User.Identity?.Name!</a>
                             <a class="btn btn-outline-danger btn-sm" href="/logout">Đăng xuất</a>
                         </Authorized>
                         <NotAuthorized>
@@ -62,6 +62,7 @@
         </div>
     </div>
 }
+<ConfirmDialog />
 
 @code {
     private string? toastMessage;

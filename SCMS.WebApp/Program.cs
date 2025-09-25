@@ -28,7 +28,6 @@ builder.Services.AddAuthorization(options =>
 
 builder.Services.AddSingleton<TokenService>();
 // --- BẮT ĐẦU SỬA ĐỔI TOÀN DIỆN ---
-
 // 1. Đăng ký AuthHeaderHandler để nó có thể được thêm vào các HttpClient
 builder.Services.AddScoped<AuthHeaderHandler>();
 
@@ -68,11 +67,17 @@ builder.Services.AddHttpClient<UserService>(client =>
     client.BaseAddress = new Uri(builder.Configuration["ApiBaseAddress"] ?? "https://localhost:7063");
 })
 .AddHttpMessageHandler<AuthHeaderHandler>();
+builder.Services.AddHttpClient<WalletService>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["ApiBaseAddress"] ?? "https://localhost:7063");
+})
+.AddHttpMessageHandler<AuthHeaderHandler>();
 
 
 // 4. Đăng ký các service không cần HttpClient
 builder.Services.AddSingleton<CartService>();
 builder.Services.AddSingleton<ToastService>();
+builder.Services.AddScoped<ConfirmDialogService>();
 
 // --- KẾT THÚC SỬA ĐỔI TOÀN DIỆN ---
 

@@ -46,6 +46,74 @@ namespace SCMS.WebApp.Services
             return response.IsSuccessStatusCode;
         }
 
-        // --- KẾT THÚC CODE MỚI ---
+        public async Task<ParentLinkDetailsDto?> GetLinkedParentAsync()
+        {
+            try
+            {
+                return await _httpClient.GetFromJsonAsync<ParentLinkDetailsDto>("api/users/my-parent");
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                return null; // Trả về null nếu API trả về 404 Not Found
+            }
+        }
+
+        public async Task<(bool Success, string Message)> LinkParentAsync(LinkParentRequestDto request)
+        {
+            var response = await _httpClient.PostAsJsonAsync("api/users/link-parent", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                return (true, "Yêu cầu liên kết đã được gửi.");
+            }
+
+            var error = await response.Content.ReadFromJsonAsync<Dictionary<string, object>>();
+
+            string errorMessage = "Đã xảy ra lỗi không xác định.";
+            if (error != null)
+            {
+                if (error.TryGetValue("message", out var messageObj))
+                {
+                    errorMessage = messageObj?.ToString() ?? errorMessage;
+                }
+                else if (error.TryGetValue("title", out var titleObj))
+                {
+                    errorMessage = titleObj?.ToString() ?? errorMessage;
+                }
+            }
+
+            return (false, errorMessage);
+        }
+
+        public async Task<(bool Success, string Message)> UnlinkParentAsync()
+        {
+            var response = await _httpClient.PostAsync("api/users/unlink-parent", null);
+            if (response.IsSuccessStatusCode)
+            {
+                // Sửa ở đây để trả về đúng thông báo từ API
+                var successResult = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
+                return (true, successResult?["message"] ?? "Đã gửi yêu cầu hủy liên kết.");
+            }
+
+            // --- SỬA LỖI JSON Ở ĐÂY ---
+            var error = await response.Content.ReadFromJsonAsync<Dictionary<string, object>>();
+            string errorMessage = "Đã xảy ra lỗi không xác định.";
+            if (error != null && error.TryGetValue("message", out var messageObj))
+            {
+                errorMessage = messageObj?.ToString() ?? errorMessage;
+            }
+            return (false, errorMessage);
+        }
+        public async Task<List<Role>?> GetAllRolesAsync()
+        {
+            try
+            {
+                return await _httpClient.GetFromJsonAsync<List<Role>>("api/users/roles");
+            }
+            catch (HttpRequestException)
+            {
+                return null;
+            }
+        }
     }
 }

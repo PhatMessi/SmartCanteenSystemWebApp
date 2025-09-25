@@ -1,12 +1,42 @@
-﻿// File: SCMS.WebApp/Services/OrderService.cs
-using SCMS.Domain;
+﻿using SCMS.Domain;
 using SCMS.Domain.DTOs;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
+using System.Collections.Generic; 
 
 namespace SCMS.WebApp.Services
 {
+
+    // Các lớp này dùng để đóng gói kết quả trả về từ service, giúp UI dễ dàng xử lý
+    // và hiển thị thông báo chi tiết cho người dùng.
+
+    // Chứa kết quả chung cho các thao tác trả về message (thành công/thất bại)
+    public class OperationResult
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; } = string.Empty;
+    }
+
+    /// Chứa kết quả cho việc đặt hàng mới
+    public class PlaceOrderResult : OperationResult
+    {
+        public Order? CreatedOrder { get; set; }
+    }
+
+    /// Chứa kết quả cho việc cập nhật đơn hàng
+    public class UpdateOrderResult : OperationResult
+    {
+        public Order? UpdatedOrder { get; set; }
+    }
+    
+    /// Dùng để đọc cấu trúc lỗi chung từ API (e.g., { "message": "..." })
+    public class ErrorResponse
+    {
+        public string Message { get; set; } = string.Empty;
+    }
+
+
     public class OrderService
     {
         private readonly HttpClient _httpClient;
@@ -16,53 +46,123 @@ namespace SCMS.WebApp.Services
             _httpClient = httpClient;
         }
 
-        public async Task<Order?> PlaceOrderAsync(PlaceOrderRequestDto orderDto)
+
+        /// Đặt một đơn hàng mới. Trả về kết quả chi tiết.
+        public async Task<PlaceOrderResult> PlaceOrderAsync(PlaceOrderRequestDto orderDto)
         {
-            var response = await _httpClient.PostAsJsonAsync("api/Orders", orderDto);
-            return response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<Order>() : null;
+            try
+            {
+                var response = await _httpClient.PostAsJsonAsync("api/Orders", orderDto);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var createdOrder = await response.Content.ReadFromJsonAsync<Order>();
+                    return new PlaceOrderResult { Success = true, CreatedOrder = createdOrder, Message = "Đặt hàng thành công!" };
+                }
+                else
+                {
+                    // Đọc lỗi từ ErrorHandlingMiddleware hoặc BadRequest
+                    var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+                    return new PlaceOrderResult { Success = false, Message = error?.Message ?? "Đặt hàng thất bại." };
+                }
+            }
+            catch (Exception ex)
+            {
+                // Xử lý các lỗi kết nối mạng, etc.
+                return new PlaceOrderResult { Success = false, Message = $"Lỗi hệ thống: {ex.Message}" };
+            }
         }
 
-        // ===== BẮT ĐẦU SỬA LỖI EXCEPTION TRÊN TOÀN BỘ FILE =====
+        /// Cập nhật một đơn hàng đang chờ thanh toán. Trả về kết quả chi tiết.
+        public async Task<UpdateOrderResult> UpdateOrderAsync(int orderId, PlaceOrderRequestDto orderDto)
+        {
+            try
+            {
+                var response = await _httpClient.PutAsJsonAsync($"api/Orders/{orderId}", orderDto);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var updatedOrder = await response.Content.ReadFromJsonAsync<Order>();
+                    return new UpdateOrderResult { Success = true, UpdatedOrder = updatedOrder, Message = "Cập nhật đơn hàng thành công!" };
+                }
+                else
+                {
+                    var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+                    return new UpdateOrderResult { Success = false, Message = error?.Message ?? "Cập nhật thất bại." };
+                }
+            }
+            catch (Exception ex)
+            {
+                return new UpdateOrderResult { Success = false, Message = $"Lỗi hệ thống: {ex.Message}" };
+            }
+        }
+
+        /// Xác nhận thanh toán cho một đơn hàng. Trả về kết quả chi tiết.
+        public async Task<OperationResult> ConfirmOrderPaymentAsync(int orderId)
+        {
+            try
+            {
+                var response = await _httpClient.PostAsync($"api/Orders/{orderId}/confirm-payment", null);
+                
+                // API trả về message cho cả trường hợp thành công và thất bại
+                var result = await response.Content.ReadFromJsonAsync<ErrorResponse>(); // Dùng chung ErrorResponse vì cấu trúc JSON { "message": "..." } là như nhau
+
+                return new OperationResult
+                {
+                    Success = response.IsSuccessStatusCode,
+                    Message = result?.Message ?? "Thao tác không nhận được phản hồi."
+                };
+            }
+            catch (Exception ex)
+            {
+                return new OperationResult { Success = false, Message = $"Lỗi hệ thống: {ex.Message}" };
+            }
+        }
+
+        /// Hủy một đơn hàng đã thanh toán. Trả về kết quả chi tiết.
+        public async Task<OperationResult> CancelOrderAsync(int orderId)
+        {
+            try
+            {
+                var response = await _httpClient.PostAsync($"api/Orders/{orderId}/cancel", null);
+                
+                var result = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+                
+                return new OperationResult
+                {
+                    Success = response.IsSuccessStatusCode,
+                    Message = result?.Message ?? "Thao tác không nhận được phản hồi."
+                };
+            }
+            catch (Exception ex)
+            {
+                return new OperationResult { Success = false, Message = $"Lỗi hệ thống: {ex.Message}" };
+            }
+        }
+
+
+
         public async Task<List<Order>?> GetMyOrdersAsync()
         {
-            var response = await _httpClient.GetAsync("api/orders/my-orders");
-            return response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<List<Order>>() : null;
+            return await _httpClient.GetFromJsonAsync<List<Order>>("api/orders/my-orders");
         }
 
         public async Task<List<Order>?> GetProcessableOrdersAsync()
         {
-            var response = await _httpClient.GetAsync("api/Orders");
-            return response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<List<Order>>() : null;
+            return await _httpClient.GetFromJsonAsync<List<Order>>("api/Orders");
         }
 
         public async Task<List<Order>?> GetOrderHistoryAsync()
         {
-            var response = await _httpClient.GetAsync("api/Orders/history");
-            return response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<List<Order>>() : null;
+            return await _httpClient.GetFromJsonAsync<List<Order>>("api/Orders/history");
         }
-        // ===== KẾT THÚC SỬA LỖI EXCEPTION =====
-
+        
         public async Task<Order?> UpdateOrderStatusAsync(int orderId, string newStatus)
         {
             var statusDto = new UpdateOrderStatusDto { Status = newStatus };
             var response = await _httpClient.PutAsJsonAsync($"api/orders/{orderId}/status", statusDto);
-            if (response.IsSuccessStatusCode)
-            {
-                return await response.Content.ReadFromJsonAsync<Order>();
-            }
-            return null;
+            return response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<Order>() : null;
         }
 
-        public async Task<bool> ConfirmPaymentAsync(int orderId)
-        {
-            var response = await _httpClient.PostAsync($"api/Orders/{orderId}/confirm-payment", null);
-            return response.IsSuccessStatusCode;
-        }
-
-        public async Task<bool> CancelOrderAsync(int orderId)
-        {
-            var response = await _httpClient.PostAsync($"api/Orders/{orderId}/cancel", null);
-            return response.IsSuccessStatusCode;
-        }
     }
 }

@@ -1,0 +1,60 @@
+﻿@inject ConfirmDialogService DialogService
+
+@if (IsVisible)
+{
+    <div class="modal fade show" style="display:block" aria-modal="true" role="dialog">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@Title</h5>
+                    <button type="button" class="btn-close" @onclick="() => OnResult(false)"></button>
+                </div>
+                <div class="modal-body">
+                    @* Dùng MarkupString để có thể render các thẻ <br/> hoặc <strong> *@
+                    <p>@(new MarkupString(Message.Replace("\n", "<br/>")))</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="() => OnResult(false)">Hủy</button>
+                    <button type="button" class="btn btn-primary" @onclick="() => OnResult(true)">Xác nhận</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    private bool IsVisible { get; set; }
+    private string Title { get; set; } = "";
+    private string Message { get; set; } = "";
+    private TaskCompletionSource<bool> _tcs = new TaskCompletionSource<bool>();
+
+    protected override void OnInitialized()
+    {
+        DialogService.OnShow += ShowDialog;
+    }
+
+    private async Task<bool> ShowDialog(string title, string message)
+    {
+        Title = title;
+        Message = message;
+        IsVisible = true;
+        _tcs = new TaskCompletionSource<bool>();
+
+        await InvokeAsync(StateHasChanged);
+
+        return await _tcs.Task;
+    }
+
+    private void OnResult(bool result)
+    {
+        IsVisible = false;
+        _tcs.SetResult(result);
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        DialogService.OnShow -= ShowDialog;
+    }
+}
