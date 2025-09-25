@@ -47,23 +47,28 @@ else
                         <hr />
                         <p><strong>Tổng tiền: @order.TotalPrice.ToString("N0") VNĐ</strong></p>
                         <p><strong>Người đặt: @order.User.FullName</strong></p>
-                        <div class="mt-3">
-                            <strong>Cập nhật trạng thái:</strong>
-                            <select class="form-select w-auto d-inline-block ms-2" @onchange="(e) => HandleStatusChange(order, e.Value.ToString())">
-                                <option value="">-- Chọn trạng thái --</option>
-                                @if (order.Status == "Paid")
-                                {
-                                    <option value="Preparing">Chuẩn bị</option>
-                                }
-                                @if (order.Status == "Preparing")
-                                {
-                                    <option value="Ready for Pickup">Sẵn sàng</option>
-                                }
-                                @if (order.Status == "Ready for Pickup")
-                                {
-                                    <option value="Completed">Hoàn thành</option>
-                                }
-                            </select>
+                        <div class="mt-3 d-flex justify-content-end gap-2">
+                            @if (order.Status == "Paid")
+                            {
+                                <button class="btn btn-success" @onclick="() => ProgressOrder(order)">
+                                    <i class="oi oi-check"></i> Nhận đơn
+                                </button>
+                                <button class="btn btn-danger" @onclick="() => RejectOrder(order)">
+                                    <i class="oi oi-x"></i> Từ chối
+                                </button>
+                            }
+                            else if (order.Status == "Preparing")
+                            {
+                                <button class="btn btn-primary" @onclick="() => ProgressOrder(order)">
+                                    <i class="oi oi-thumb-up"></i> Báo sẵn sàng
+                                </button>
+                            }
+                            else if (order.Status == "Ready for Pickup")
+                            {
+                                <button class="btn btn-info" @onclick="() => ProgressOrder(order)">
+                                    <i class="oi oi-task"></i> Hoàn thành
+                                </button>
+                            }
                         </div>
                     </div>
                 </div>
@@ -99,30 +104,44 @@ else
         }
     }
 
-    private async Task HandleStatusChange(Order order, string newStatus)
+    private async Task ProgressOrder(Order order)
     {
-        if (string.IsNullOrEmpty(newStatus)) return;
-        var updatedOrder = await OrderService.UpdateOrderStatusAsync(order.OrderId, newStatus);
-        if (updatedOrder != null)
+        var result = await OrderService.ProgressOrderAsync(order.OrderId);
+        ToastService.ShowToast(result.Message, result.Success ? ToastLevel.Success : ToastLevel.Danger);
+
+        if (result.Success && result.Order != null)
         {
-            ToastService.ShowToast($"Cập nhật đơn hàng #{order.OrderId} thành công!");
             var index = orders.FindIndex(o => o.OrderId == order.OrderId);
             if (index != -1)
             {
-                if (updatedOrder.Status == "Completed" || updatedOrder.Status == "Cancelled")
+                // Nếu đơn hàng hoàn thành hoặc bị hủy thì xóa khỏi danh sách
+                if (result.Order.Status == "Completed" || result.Order.Status == "Cancelled")
                 {
                     orders.RemoveAt(index);
                 }
-                else
+                else // Ngược lại thì cập nhật
                 {
-                    orders[index] = updatedOrder;
+                    orders[index] = result.Order;
                 }
             }
             StateHasChanged();
         }
-        else
+    }
+
+    private async Task RejectOrder(Order order)
+    {
+        // Thêm hộp thoại xác nhận nếu muốn
+        var result = await OrderService.RejectOrderAsync(order.OrderId);
+        ToastService.ShowToast(result.Message, result.Success ? ToastLevel.Success : ToastLevel.Danger);
+
+        if (result.Success)
         {
-            ToastService.ShowToast("Cập nhật thất bại.", ToastLevel.Danger);
+            var index = orders.FindIndex(o => o.OrderId == order.OrderId);
+            if (index != -1)
+            {
+                orders.RemoveAt(index); // Xóa đơn hàng đã từ chối khỏi danh sách
+            }
+            StateHasChanged();
         }
     }
 

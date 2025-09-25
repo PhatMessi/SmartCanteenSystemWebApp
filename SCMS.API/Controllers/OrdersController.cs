@@ -42,16 +42,29 @@ namespace SCMS.API.Controllers
             return Ok(orders);
         }
 
-        [HttpPut("{orderId}/status")]
+        [HttpPost("{orderId}/progress")]
         //[Authorize(Roles = "CanteenStaff,CanteenManager,SystemAdmin")]
-        public async Task<IActionResult> UpdateOrderStatus(int orderId, UpdateOrderStatusDto statusDto)
+        public async Task<IActionResult> ProgressOrder(int orderId)
         {
-            var updatedOrder = await _orderService.UpdateOrderStatusAsync(orderId, statusDto.Status);
-            if (updatedOrder == null)
+            var result = await _orderService.ProgressOrderStatusAsync(orderId);
+            if (!result.Success)
             {
-                return NotFound($"Order with ID {orderId} not found.");
+                return BadRequest(new { message = result.Message });
             }
-            return Ok(updatedOrder);
+            return Ok(result.Order);
+        }
+
+        // Endpoint để từ chối một đơn hàng
+        [HttpPost("{orderId}/reject")]
+        //[Authorize(Roles = "CanteenStaff,CanteenManager,SystemAdmin")]
+        public async Task<IActionResult> RejectOrder(int orderId)
+        {
+            var result = await _orderService.RejectOrderAsync(orderId);
+            if (!result.Success)
+            {
+                return BadRequest(new { message = result.Message });
+            }
+            return Ok(new { message = result.Message });
         }
 
         [HttpGet("my-orders")]

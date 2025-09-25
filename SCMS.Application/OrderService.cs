@@ -88,23 +88,92 @@ namespace SCMS.Application
                 .ThenInclude(oi => oi.MenuItem) // Lấy kèm thông tin tên món ăn
                 .ToListAsync();
         }
-        public async Task<Order?> UpdateOrderStatusAsync(int orderId, string newStatus)
+        public async Task<(bool Success, string Message, Order? Order)> ProgressOrderStatusAsync(int orderId)
         {
             var order = await _context.Orders
-                .Include(o => o.User) // <-- THÊM DÒNG NÀY
-                .Include(o => o.OrderItems)
-                .ThenInclude(oi => oi.MenuItem)
+                .Include(o => o.User)
+                .Include(o => o.OrderItems).ThenInclude(oi => oi.MenuItem)
                 .FirstOrDefaultAsync(o => o.OrderId == orderId);
 
             if (order == null)
             {
-                return null;
+                return (false, "Không tìm thấy đơn hàng.", null);
             }
 
-            order.Status = newStatus;
+            // Xác định trạng thái tiếp theo dựa trên trạng thái hiện tại
+            string nextStatus = order.Status switch
+            {
+                "Paid" => "Preparing",
+                "Preparing" => "Ready for Pickup",
+                "Ready for Pickup" => "Completed",
+                _ => "" // Các trạng thái khác không có hành động tiến tới mặc định
+            };
+
+            if (string.IsNullOrEmpty(nextStatus))
+            {
+                return (false, $"Không thể chuyển tiếp đơn hàng từ trạng thái '{order.Status}'.", null);
+            }
+
+            order.Status = nextStatus;
             await _context.SaveChangesAsync();
 
-            return order;
+            return (true, $"Đã cập nhật đơn hàng sang trạng thái '{nextStatus}'.", order);
+        }
+
+        public async Task<(bool Success, string Message)> RejectOrderAsync(int orderId)
+        {
+            var order = await _context.Orders.FindAsync(orderId);
+            if (order == null)
+            {
+                return (false, "Không tìm thấy đơn hàng.");
+            }
+
+            // QUAN TRỌNG: Chỉ cho phép từ chối đơn hàng đã thanh toán
+            if (order.Status != "Paid")
+            {
+                return (false, $"Không thể từ chối đơn hàng đang ở trạng thái '{order.Status}'.");
+            }
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                // 1. Hoàn tiền 100% cho khách hàng
+                var refundMessage = $"Hoàn tiền cho đơn hàng #{orderId} bị Canteen từ chối.";
+                var refundSuccess = await _walletService.RefundAsync(order.OrderId, order.TotalPrice, refundMessage);
+                if (!refundSuccess)
+                {
+                    await transaction.RollbackAsync();
+                    return (false, "Xảy ra lỗi trong quá trình hoàn tiền.");
+                }
+
+                // 2. Hoàn trả lại số lượng tồn kho
+                var orderItems = await _context.OrderItems.Where(oi => oi.OrderId == orderId).ToListAsync();
+                var menuItemIds = orderItems.Select(oi => oi.ItemId).ToList();
+                var menuItemsToUpdate = await _context.MenuItems
+                                                      .Where(mi => menuItemIds.Contains(mi.ItemId))
+                                                      .ToListAsync();
+                foreach (var orderItem in orderItems)
+                {
+                    var menuItem = menuItemsToUpdate.FirstOrDefault(mi => mi.ItemId == orderItem.ItemId);
+                    if (menuItem != null)
+                    {
+                        menuItem.InventoryQuantity += orderItem.Quantity;
+                    }
+                }
+
+                // 3. Cập nhật trạng thái đơn hàng
+                order.Status = "Cancelled";
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return (true, "Từ chối đơn hàng thành công và đã hoàn tiền cho khách.");
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                return (false, "Lỗi hệ thống khi từ chối đơn hàng.");
+            }
         }
         public async Task<List<Order>> GetOrdersByUserIdAsync(int userId)
         {

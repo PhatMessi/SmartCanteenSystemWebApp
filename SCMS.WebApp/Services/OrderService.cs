@@ -156,12 +156,42 @@ namespace SCMS.WebApp.Services
         {
             return await _httpClient.GetFromJsonAsync<List<Order>>("api/Orders/history");
         }
-        
-        public async Task<Order?> UpdateOrderStatusAsync(int orderId, string newStatus)
+
+        public async Task<(bool Success, string Message, Order? Order)> ProgressOrderAsync(int orderId)
         {
-            var statusDto = new UpdateOrderStatusDto { Status = newStatus };
-            var response = await _httpClient.PutAsJsonAsync($"api/orders/{orderId}/status", statusDto);
-            return response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<Order>() : null;
+            try
+            {
+                var response = await _httpClient.PostAsync($"api/orders/{orderId}/progress", null);
+                if (response.IsSuccessStatusCode)
+                {
+                    var updatedOrder = await response.Content.ReadFromJsonAsync<Order>();
+                    return (true, "Cập nhật thành công", updatedOrder);
+                }
+                var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+                return (false, error?.Message ?? "Cập nhật thất bại.", null);
+            }
+            catch (Exception ex)
+            {
+                return (false, $"Lỗi hệ thống: {ex.Message}", null);
+            }
+        }
+
+        public async Task<OperationResult> RejectOrderAsync(int orderId)
+        {
+            try
+            {
+                var response = await _httpClient.PostAsync($"api/orders/{orderId}/reject", null);
+                var result = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+                return new OperationResult
+                {
+                    Success = response.IsSuccessStatusCode,
+                    Message = result?.Message ?? "Thao tác không nhận được phản hồi."
+                };
+            }
+            catch (Exception ex)
+            {
+                return new OperationResult { Success = false, Message = $"Lỗi hệ thống: {ex.Message}" };
+            }
         }
 
     }
