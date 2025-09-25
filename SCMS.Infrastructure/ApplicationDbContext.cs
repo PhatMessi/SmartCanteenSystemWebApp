@@ -15,16 +15,39 @@ namespace SCMS.Infrastructure
         public DbSet<OrderItem> OrderItems { get; set; }
         public DbSet<Transaction> Transactions { get; set; }
         public DbSet<Promotion> Promotions { get; set; }
+        public DbSet<Wallet> Wallets { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            // Cấu hình quan hệ User - Wallet (1-1)
+            modelBuilder.Entity<User>()
+                .HasOne(u => u.Wallet)
+                .WithOne(w => w.User)
+                .HasForeignKey<Wallet>(w => w.UserId);
+
+            // Cấu hình quan hệ tự tham chiếu cho User (Phụ huynh - Học sinh)
+            modelBuilder.Entity<User>()
+                .HasMany(u => u.LinkedStudents)
+                .WithOne(u => u.Parent)
+                .HasForeignKey(u => u.ParentId)
+                .OnDelete(DeleteBehavior.Restrict); 
+
+            // Cấu hình quan hệ cho Transaction
+            modelBuilder.Entity<Transaction>()
+               .HasOne(t => t.Wallet)
+               .WithMany() // Một ví có nhiều giao dịch
+               .HasForeignKey(t => t.WalletId)
+               .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<Role>().HasData(
                 new Role { RoleId = 1, RoleName = "Student" },
                 new Role { RoleId = 2, RoleName = "CanteenStaff" },
                 new Role { RoleId = 3, RoleName = "CanteenManager" },
-                new Role { RoleId = 4, RoleName = "SystemAdmin" }
+                new Role { RoleId = 4, RoleName = "SystemAdmin" },
+                new Role { RoleId = 5, RoleName = "Parent" },
+                new Role { RoleId = 6, RoleName = "HeadTeacher" },
+                new Role { RoleId = 7, RoleName = "SchoolAdministration" }
             );
 
             modelBuilder.Entity<User>().HasData(
@@ -62,6 +85,33 @@ namespace SCMS.Infrastructure
                     Email = "staff@scms.com",
                     PasswordHash = BCrypt.Net.BCrypt.HashPassword("staff@123"),
                     RoleId = 2 
+                }
+
+            );
+            modelBuilder.Entity<User>().HasData(
+                new User
+                {
+                    UserId = 15,
+                    FullName = "Default Parent",
+                    Email = "parent@scms.com",
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("parent@123"),
+                    RoleId = 5 
+                },
+                new User
+                {
+                    UserId = 16,
+                    FullName = "Default Head Teacher",
+                    Email = "headteacher@scms.com",
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("headteacher@123"),
+                    RoleId = 6 
+                },
+                new User
+                {
+                    UserId = 17,
+                    FullName = "School Admin User",
+                    Email = "schooladmin@scms.com",
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("schooladmin@123"),
+                    RoleId = 7 
                 }
             );
 

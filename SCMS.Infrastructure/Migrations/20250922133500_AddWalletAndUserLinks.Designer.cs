@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SCMS.Infrastructure;
 
@@ -11,9 +12,11 @@ using SCMS.Infrastructure;
 namespace SCMS.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250922133500_AddWalletAndUserLinks")]
+    partial class AddWalletAndUserLinks
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -110,9 +113,6 @@ namespace SCMS.Infrastructure.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("OrderId"));
 
                     b.Property<DateTime>("OrderDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("PickupTime")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Status")
@@ -233,21 +233,6 @@ namespace SCMS.Infrastructure.Migrations
                         {
                             RoleId = 4,
                             RoleName = "SystemAdmin"
-                        },
-                        new
-                        {
-                            RoleId = 5,
-                            RoleName = "Parent"
-                        },
-                        new
-                        {
-                            RoleId = 6,
-                            RoleName = "HeadTeacher"
-                        },
-                        new
-                        {
-                            RoleId = 7,
-                            RoleName = "SchoolAdministration"
                         });
                 });
 
@@ -350,72 +335,42 @@ namespace SCMS.Infrastructure.Migrations
                         new
                         {
                             UserId = 1,
-                            CreatedAt = new DateTime(2025, 9, 24, 7, 3, 6, 858, DateTimeKind.Utc).AddTicks(3540),
+                            CreatedAt = new DateTime(2025, 9, 22, 13, 34, 57, 148, DateTimeKind.Utc).AddTicks(8570),
                             Email = "admin@scms.com",
                             FullName = "System Administrator",
                             MustChangePassword = false,
-                            PasswordHash = "$2a$11$9PjuDrKG15wYIaGE1W6sIOCkOlhGjIpaHQMuJoiMhUSZ90FyreLOa",
+                            PasswordHash = "$2a$11$OJGn4D4P9yc68FDLoGMSSeQv5RBDhtDtBgw14cXyfTKI2fjni/FIm",
                             RoleId = 4
                         },
                         new
                         {
                             UserId = 2,
-                            CreatedAt = new DateTime(2025, 9, 24, 7, 3, 7, 31, DateTimeKind.Utc).AddTicks(64),
+                            CreatedAt = new DateTime(2025, 9, 22, 13, 34, 57, 556, DateTimeKind.Utc).AddTicks(2302),
                             Email = "canteenmanager@scms.com",
                             FullName = "Canteen Manager",
                             MustChangePassword = false,
-                            PasswordHash = "$2a$11$GDWd9lGFpdwLdkk0JmLWpOnlnCkEZaGiivL0uk9odSpBZLvjEZn6C",
+                            PasswordHash = "$2a$11$oMZ7rSGqHgsO1hrg2Iwjv.SWsH8mEOVg5GQRLtpNwwXHcI.YMqkNS",
                             RoleId = 3
                         },
                         new
                         {
                             UserId = 6,
-                            CreatedAt = new DateTime(2025, 9, 24, 7, 3, 7, 199, DateTimeKind.Utc).AddTicks(8369),
+                            CreatedAt = new DateTime(2025, 9, 22, 13, 34, 58, 162, DateTimeKind.Utc).AddTicks(1616),
                             Email = "student@scms.com",
                             FullName = "Nhat Dung",
                             MustChangePassword = false,
-                            PasswordHash = "$2a$11$6BaBRoycaIoQ9jEOZ2v0FuFov0qabUY2XXpg8YcAVf.IvNExu26C.",
+                            PasswordHash = "$2a$11$lHp4KY.HLzQ.ZOqpZ4BzQu5EJPg7gtoOlSB5WeholDBeTalWXXM2W",
                             RoleId = 1
                         },
                         new
                         {
                             UserId = 7,
-                            CreatedAt = new DateTime(2025, 9, 24, 7, 3, 7, 389, DateTimeKind.Utc).AddTicks(6666),
+                            CreatedAt = new DateTime(2025, 9, 22, 13, 34, 58, 652, DateTimeKind.Utc).AddTicks(43),
                             Email = "staff@scms.com",
                             FullName = "Thien Truong",
                             MustChangePassword = false,
-                            PasswordHash = "$2a$11$j4MR1VLRmGQDq3s.jUD9TOpDn4iFdeW2yQxm34JOrpv1at79QuKNu",
+                            PasswordHash = "$2a$11$h9VC0bqbOWnX4Xp4N5u0Iehtg4rErnPitR9M9LsLhdmaUF18J7Jva",
                             RoleId = 2
-                        },
-                        new
-                        {
-                            UserId = 15,
-                            CreatedAt = new DateTime(2025, 9, 24, 7, 3, 7, 573, DateTimeKind.Utc).AddTicks(4525),
-                            Email = "parent@scms.com",
-                            FullName = "Default Parent",
-                            MustChangePassword = false,
-                            PasswordHash = "$2a$11$HB4rSIo4m5tsipPJhdWD2eZJYb.AJuWQzZoN6GAdr7vk0rJUWu.eS",
-                            RoleId = 5
-                        },
-                        new
-                        {
-                            UserId = 16,
-                            CreatedAt = new DateTime(2025, 9, 24, 7, 3, 7, 737, DateTimeKind.Utc).AddTicks(2780),
-                            Email = "headteacher@scms.com",
-                            FullName = "Default Head Teacher",
-                            MustChangePassword = false,
-                            PasswordHash = "$2a$11$rF5y6y.5FbHnAWC2fcyjmeNvR2PMuqyY4Gd1jW58hIA6NxfTYViSy",
-                            RoleId = 6
-                        },
-                        new
-                        {
-                            UserId = 17,
-                            CreatedAt = new DateTime(2025, 9, 24, 7, 3, 7, 896, DateTimeKind.Utc).AddTicks(8670),
-                            Email = "schooladmin@scms.com",
-                            FullName = "School Admin User",
-                            MustChangePassword = false,
-                            PasswordHash = "$2a$11$GjV4AVe.nyO/sXX4dZH7HuQ7okN4YDTRw7aFzPunSPYKNqNoMpvJa",
-                            RoleId = 7
                         });
                 });
 
