@@ -1,5 +1,4 @@
-﻿// File: SCMS.Application/WalletService.cs
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using SCMS.Domain;
 using SCMS.Domain.DTOs;
 using SCMS.Infrastructure;
