@@ -72,6 +72,11 @@ builder.Services.AddHttpClient<WalletService>(client =>
     client.BaseAddress = new Uri(builder.Configuration["ApiBaseAddress"] ?? "https://localhost:7063");
 })
 .AddHttpMessageHandler<AuthHeaderHandler>();
+builder.Services.AddHttpClient<NotificationService>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["ApiBaseAddress"] ?? "https://localhost:7063");
+})
+.AddHttpMessageHandler<AuthHeaderHandler>();
 
 
 // 4. Đăng ký các service không cần HttpClient

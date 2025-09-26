@@ -14,11 +14,13 @@ namespace SCMS.Application
     {
         private readonly ApplicationDbContext _context;
         private readonly UserService _userService;
+        private readonly NotificationService _notificationService;
 
-        public WalletService(ApplicationDbContext context, UserService userService)
+        public WalletService(ApplicationDbContext context, UserService userService, NotificationService notificationService)
         {
             _context = context;
             _userService = userService;
+            _notificationService = notificationService;
         }
 
         private async Task<Wallet> GetOrCreateWalletAsync(int userId)
@@ -79,7 +81,12 @@ namespace SCMS.Application
                 Description = description
             });
 
-            return await _context.SaveChangesAsync() > 0;
+            var success = await _context.SaveChangesAsync() > 0;
+            if (success)
+            {
+                await _notificationService.CreateNotificationAsync(userId, $"Bạn đã nạp thành công {amount:N0}đ vào ví.", "/wallet");
+            }
+            return success;
         }
 
         public async Task<bool> ProcessPaymentAsync(int userId, int orderId, decimal amount)
@@ -124,7 +131,14 @@ namespace SCMS.Application
                 Description = description // Sử dụng mô tả được truyền vào
             });
 
-            return await _context.SaveChangesAsync() > 0;
+            var success = await _context.SaveChangesAsync() > 0;
+
+            if (success)
+            {
+                await _notificationService.CreateNotificationAsync(order.UserId, $"Bạn đã được hoàn {amountToRefund:N0}đ vào ví.", "/wallet");
+            }
+
+            return success;
         }
         public async Task<(List<TransactionDetailsDto>? History, string? ErrorMessage)> GetTransactionHistoryForStudentAsync(int studentId, int parentId)
         {

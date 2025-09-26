@@ -2,6 +2,7 @@
 @inject CartService CartService
 @inject ToastService ToastService
 @implements IDisposable
+@inject NotificationService NotificationService
 
 <div class="page">
     <div class="sidebar">
@@ -12,21 +13,35 @@
         @* BIẾN TOP-ROW THÀNH MỘT THANH HEADER HOÀN CHỈNH *@
         <nav class="navbar navbar-light bg-light px-4 shadow-sm">
             <div class="container-fluid">
-                @* Dùng cho việc thu gọn menu trên mobile *@
-                @* <button class="navbar-toggler d-md-none" type="button"> *@
-                @*     <span class="navbar-toggler-icon"></span> *@
-                @* </button> *@
+                <div class="d-flex align-items-center">
+                    @* GIỎ HÀNG *@
+                    <a href="/cart" class="nav-link me-3">
+                        @* Thêm me-3 để tạo khoảng cách *@
+                        <span class="oi oi-cart" style="font-size: 1.5rem; color: var(--primary-color);"></span>
+                        @if (CartService.Items.Any())
+                        {
+                            <span class="badge bg-danger rounded-pill" style="position: relative; top: -12px; left: -10px;">
+                                @CartService.Items.Count
+                            </span>
+                        }
+                    </a>
 
-                @* GIỎ HÀNG SẼ NẰM Ở ĐÂY (bên trái) *@
-                <a href="/cart" class="nav-link">
-                    <span class="oi oi-cart" style="font-size: 1.5rem; color: var(--primary-color);"></span>
-                    @if (CartService.Items.Any())
-                    {
-                        <span class="badge bg-danger rounded-pill" style="position: relative; top: -12px; left: -10px;">
-                            @CartService.Items.Count
-                        </span>
-                    }
-                </a>
+                    @* ICON THÔNG BÁO (THÊM MỚI) *@
+                    <AuthorizeView>
+                        @* Chỉ hiển thị khi đã đăng nhập *@
+                        <Authorized>
+                            <a href="/notifications" class="nav-link">
+                                <span class="oi oi-bell" style="font-size: 1.5rem; color: var(--primary-color);"></span>
+                                @if (unreadNotificationCount > 0)
+                                {
+                                    <span class="badge bg-danger rounded-pill" style="position: relative; top: -12px; left: -10px;">
+                                        @unreadNotificationCount
+                                    </span>
+                                }
+                            </a>
+                        </Authorized>
+                    </AuthorizeView>
+                </div>
 
                 @* KHỐI ĐĂNG NHẬP SẼ BỊ ĐẨY SANG BÊN PHẢI VỚI ms-auto *@
                 <div class="ms-auto d-flex align-items-center">
@@ -68,17 +83,24 @@
     private string? toastMessage;
     private string? toastCssClass;
     private bool toastVisible = false;
+    private int unreadNotificationCount = 0;
 
     private Action _cartServiceOnChange; // Biến để lưu trữ action
 
-    protected override void OnInitialized()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        // Gán lambda có InvokeAsync vào biến
-        _cartServiceOnChange = () => InvokeAsync(StateHasChanged);
-        // Đăng ký sự kiện bằng biến đó
-        CartService.OnChange += _cartServiceOnChange;
+        if (firstRender)
+        {
+            // Gán lambda có InvokeAsync vào biến
+            _cartServiceOnChange = () => InvokeAsync(StateHasChanged);
+            // Đăng ký sự kiện bằng biến đó
+            CartService.OnChange += _cartServiceOnChange;
+            ToastService.OnShow += ShowToast;
 
-        ToastService.OnShow += ShowToast;
+            // Lấy số lượng thông báo chưa đọc
+            unreadNotificationCount = await NotificationService.GetUnreadCountAsync();
+            StateHasChanged(); // Cập nhật lại giao diện
+        }
     }
 
     public void Dispose()

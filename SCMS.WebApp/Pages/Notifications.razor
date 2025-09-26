@@ -1,0 +1,70 @@
+﻿@page "/notifications"
+@attribute [Authorize]
+
+@inject NotificationService NotificationService
+@inject NavigationManager NavigationManager
+@inject ToastService ToastService
+@using SCMS.Domain
+
+<h3>Thông báo</h3>
+
+@if (notifications == null)
+{
+    <p><em>Đang tải thông báo...</em></p>
+}
+else if (!notifications.Any())
+{
+    <p>Bạn không có thông báo mới nào.</p>
+}
+else
+{
+    <button class="btn btn-primary mb-3" @onclick="HandleMarkAllAsRead">
+        <span class="oi oi-check-circle"></span> Đánh dấu tất cả đã đọc
+    </button>
+
+    <div class="list-group">
+        @foreach (var notification in notifications)
+        {
+            // Dùng thẻ 'a' để có thể click, style con trỏ chuột
+            <a @onclick="() => HandleNotificationClick(notification)" class="list-group-item list-group-item-action flex-column align-items-start" style="cursor: pointer;">
+                <div class="d-flex w-100 justify-content-between">
+                    <p class="mb-1">@notification.Message</p>
+                    <small>@notification.CreatedAt.ToLocalTime().ToString("HH:mm dd/MM/yyyy")</small>
+                </div>
+            </a>
+        }
+    </div>
+}
+
+@code {
+    private List<Notification>? notifications;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Tải danh sách thông báo khi trang được khởi tạo
+        notifications = await NotificationService.GetUnreadNotificationsAsync();
+    }
+
+    private async Task HandleMarkAllAsRead()
+    {
+        var success = await NotificationService.MarkAllAsReadAsync();
+        if (success)
+        {
+            ToastService.ShowToast("Đã đánh dấu tất cả thông báo là đã đọc.", ToastLevel.Success);
+            notifications?.Clear(); // Xóa danh sách trên giao diện để người dùng thấy thay đổi ngay lập tức
+        }
+        else
+        {
+            ToastService.ShowToast("Có lỗi xảy ra, vui lòng thử lại.", ToastLevel.Danger);
+        }
+    }
+
+    private void HandleNotificationClick(Notification notification)
+    {
+        // Nếu thông báo có đường dẫn, điều hướng người dùng đến đó
+        if (!string.IsNullOrEmpty(notification.Link))
+        {
+            NavigationManager.NavigateTo(notification.Link);
+        }
+    }
+}
