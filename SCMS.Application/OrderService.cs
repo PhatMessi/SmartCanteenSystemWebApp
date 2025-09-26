@@ -128,7 +128,7 @@ namespace SCMS.Application
 
             if (!string.IsNullOrEmpty(notificationMessage))
             {
-                await _notificationService.CreateNotificationAsync(order.UserId, notificationMessage, $"/my-orders/{order.OrderId}");
+                await _notificationService.CreateNotificationAsync(order.UserId, notificationMessage, "/my-orders/");
             }
 
             return (true, $"Đã cập nhật đơn hàng sang trạng thái '{nextStatus}'.", order);
@@ -179,7 +179,7 @@ namespace SCMS.Application
                 order.Status = "Cancelled";
 
                 await _context.SaveChangesAsync();
-                await _notificationService.CreateNotificationAsync(order.UserId, $"Đơn hàng #{order.OrderId} của bạn đã bị hủy và tiền đã được hoàn lại.", $"/my-orders/{order.OrderId}");
+                await _notificationService.CreateNotificationAsync(order.UserId, $"Đơn hàng #{order.OrderId} của bạn đã bị hủy và tiền đã được hoàn lại.", "/my-orders/");
                 await transaction.CommitAsync();
 
                 return (true, "Từ chối đơn hàng thành công và đã hoàn tiền cho khách.");
@@ -227,7 +227,7 @@ namespace SCMS.Application
             // Trạng thái "Preparing" chỉ nên được cập nhật bởi nhân viên Canteen.
             order.Status = "Paid";
             await _context.SaveChangesAsync();
-            await _notificationService.CreateNotificationAsync(userId, $"Bạn đã thanh toán thành công cho đơn hàng #{order.OrderId}.", $"/my-orders/{order.OrderId}");
+            await _notificationService.CreateNotificationAsync(userId, $"Bạn đã thanh toán thành công cho đơn hàng #{order.OrderId}.", "/my-orders/");
 
             return (true, "Thanh toán đơn hàng thành công.");
         }
@@ -333,7 +333,7 @@ namespace SCMS.Application
                 order.Status = "Cancelled";
 
                 await _context.SaveChangesAsync();
-                await _notificationService.CreateNotificationAsync(userId, successMessage, $"/my-orders/{order.OrderId}");
+                await _notificationService.CreateNotificationAsync(userId, successMessage, "/my-orders/");
                 await transaction.CommitAsync();
 
                 return (true, successMessage);

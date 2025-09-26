@@ -32,10 +32,10 @@
                         <Authorized>
                             <a href="/notifications" class="nav-link">
                                 <span class="oi oi-bell" style="font-size: 1.5rem; color: var(--primary-color);"></span>
-                                @if (unreadNotificationCount > 0)
+                                @if (NotificationService.UnreadCount > 0)
                                 {
                                     <span class="badge bg-danger rounded-pill" style="position: relative; top: -12px; left: -10px;">
-                                        @unreadNotificationCount
+                                        @NotificationService.UnreadCount
                                     </span>
                                 }
                             </a>
@@ -84,7 +84,7 @@
     private string? toastCssClass;
     private bool toastVisible = false;
     private int unreadNotificationCount = 0;
-
+    private Action _notificationCountOnChange;
     private Action _cartServiceOnChange; // Biến để lưu trữ action
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -97,9 +97,11 @@
             CartService.OnChange += _cartServiceOnChange;
             ToastService.OnShow += ShowToast;
 
-            // Lấy số lượng thông báo chưa đọc
-            unreadNotificationCount = await NotificationService.GetUnreadCountAsync();
-            StateHasChanged(); // Cập nhật lại giao diện
+            _notificationCountOnChange = () => InvokeAsync(StateHasChanged);
+            NotificationService.OnCountChanged += _notificationCountOnChange;
+
+            // Lấy số lượng thông báo ban đầu
+            await NotificationService.GetInitialUnreadCountAsync();
         }
     }
 
@@ -108,6 +110,7 @@
         // Hủy đăng ký sự kiện bằng biến đó để đảm bảo chính xác
         CartService.OnChange -= _cartServiceOnChange;
         ToastService.OnShow -= ShowToast;
+        NotificationService.OnCountChanged -= _notificationCountOnChange;
     }
 
     // ===== BẮT ĐẦU SỬA LỖI LUỒNG (THREADING) =====

@@ -1,20 +1,21 @@
 ﻿@page "/notifications"
 @attribute [Authorize]
+@using SCMS.Domain
 
 @inject NotificationService NotificationService
 @inject NavigationManager NavigationManager
 @inject ToastService ToastService
-@using SCMS.Domain
 
-<h3>Thông báo</h3>
+<h3>Lịch sử thông báo</h3>
 
 @if (notifications == null)
 {
-    <p><em>Đang tải thông báo...</em></p>
+    <p><em>Đang tải lịch sử...</em></p>
 }
+// <<< THAY ĐỔI: Sửa lại câu thông báo
 else if (!notifications.Any())
 {
-    <p>Bạn không có thông báo mới nào.</p>
+    <p>Bạn không có thông báo nào.</p>
 }
 else
 {
@@ -25,8 +26,8 @@ else
     <div class="list-group">
         @foreach (var notification in notifications)
         {
-            // Dùng thẻ 'a' để có thể click, style con trỏ chuột
-            <a @onclick="() => HandleNotificationClick(notification)" class="list-group-item list-group-item-action flex-column align-items-start" style="cursor: pointer;">
+            // Thêm class 'text-muted' cho các thông báo đã đọc
+            <a @onclick="() => HandleNotificationClick(notification)" class="list-group-item list-group-item-action flex-column align-items-start @(notification.IsRead ? "text-muted" : "")" style="cursor: pointer;">
                 <div class="d-flex w-100 justify-content-between">
                     <p class="mb-1">@notification.Message</p>
                     <small>@notification.CreatedAt.ToLocalTime().ToString("HH:mm dd/MM/yyyy")</small>
@@ -41,8 +42,8 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        // Tải danh sách thông báo khi trang được khởi tạo
-        notifications = await NotificationService.GetUnreadNotificationsAsync();
+        // <<< THAY ĐỔI: Gọi phương thức lấy tất cả thông báo
+        notifications = await NotificationService.GetAllNotificationsAsync();
     }
 
     private async Task HandleMarkAllAsRead()
@@ -51,7 +52,15 @@ else
         if (success)
         {
             ToastService.ShowToast("Đã đánh dấu tất cả thông báo là đã đọc.", ToastLevel.Success);
-            notifications?.Clear(); // Xóa danh sách trên giao diện để người dùng thấy thay đổi ngay lập tức
+
+            // <<< THAY ĐỔI: Cập nhật trạng thái trên UI thay vì xóa
+            if (notifications != null)
+            {
+                foreach (var notification in notifications)
+                {
+                    notification.IsRead = true;
+                }
+            }
         }
         else
         {
@@ -61,7 +70,6 @@ else
 
     private void HandleNotificationClick(Notification notification)
     {
-        // Nếu thông báo có đường dẫn, điều hướng người dùng đến đó
         if (!string.IsNullOrEmpty(notification.Link))
         {
             NavigationManager.NavigateTo(notification.Link);

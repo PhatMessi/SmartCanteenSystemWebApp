@@ -40,10 +40,12 @@ namespace SCMS.WebApp.Services
     public class OrderService
     {
         private readonly HttpClient _httpClient;
+        private readonly NotificationService _notificationService;
 
-        public OrderService(HttpClient httpClient)
+        public OrderService(HttpClient httpClient, NotificationService notificationService)
         {
             _httpClient = httpClient;
+            _notificationService = notificationService;
         }
 
 
@@ -56,6 +58,7 @@ namespace SCMS.WebApp.Services
 
                 if (response.IsSuccessStatusCode)
                 {
+                    await _notificationService.RefreshUnreadCountAsync();
                     var createdOrder = await response.Content.ReadFromJsonAsync<Order>();
                     return new PlaceOrderResult { Success = true, CreatedOrder = createdOrder, Message = "Đặt hàng thành công!" };
                 }
@@ -106,7 +109,12 @@ namespace SCMS.WebApp.Services
                 
                 // API trả về message cho cả trường hợp thành công và thất bại
                 var result = await response.Content.ReadFromJsonAsync<ErrorResponse>(); // Dùng chung ErrorResponse vì cấu trúc JSON { "message": "..." } là như nhau
-
+                if (response.IsSuccessStatusCode)
+                {
+                    // --- BẮT ĐẦU THAY ĐỔI 4 ---
+                    await _notificationService.RefreshUnreadCountAsync();
+                    // --- KẾT THÚC THAY ĐỔI 4 ---
+                }
                 return new OperationResult
                 {
                     Success = response.IsSuccessStatusCode,
@@ -127,7 +135,12 @@ namespace SCMS.WebApp.Services
                 var response = await _httpClient.PostAsync($"api/Orders/{orderId}/cancel", null);
                 
                 var result = await response.Content.ReadFromJsonAsync<ErrorResponse>();
-                
+                if (response.IsSuccessStatusCode)
+                {
+                    // --- BẮT ĐẦU THAY ĐỔI 5 ---
+                    await _notificationService.RefreshUnreadCountAsync();
+                    // --- KẾT THÚC THAY ĐỔI 5 ---
+                }
                 return new OperationResult
                 {
                     Success = response.IsSuccessStatusCode,

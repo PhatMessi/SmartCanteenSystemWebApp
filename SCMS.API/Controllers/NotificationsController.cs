@@ -9,7 +9,7 @@ namespace SCMS.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize] // Yêu cầu người dùng phải đăng nhập
+    [Authorize]
     public class NotificationsController : ControllerBase
     {
         private readonly NotificationService _notificationService;
@@ -19,7 +19,16 @@ namespace SCMS.API.Controllers
             _notificationService = notificationService;
         }
 
-        // API để lấy danh sách thông báo chưa đọc
+        // <<< THÊM MỚI: API để lấy toàn bộ lịch sử thông báo
+        [HttpGet("all")]
+        public async Task<IActionResult> GetAll()
+        {
+            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+            var notifications = await _notificationService.GetAllNotificationsAsync(userId);
+            return Ok(notifications);
+        }
+        // <<< KẾT THÚC THÊM MỚI
+
         [HttpGet("unread")]
         public async Task<IActionResult> GetUnread()
         {
@@ -28,7 +37,6 @@ namespace SCMS.API.Controllers
             return Ok(notifications);
         }
 
-        // API để lấy số lượng thông báo chưa đọc
         [HttpGet("unread/count")]
         public async Task<IActionResult> GetUnreadCount()
         {
@@ -37,7 +45,6 @@ namespace SCMS.API.Controllers
             return Ok(new { count });
         }
 
-        // API để đánh dấu tất cả thông báo là đã đọc
         [HttpPost("mark-all-as-read")]
         public async Task<IActionResult> MarkAllAsRead()
         {

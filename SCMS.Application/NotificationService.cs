@@ -17,7 +17,17 @@ namespace SCMS.Application
             _context = context;
         }
 
-        // Lấy các thông báo chưa đọc của một user
+        // <<< THÊM MỚI: Phương thức lấy toàn bộ lịch sử thông báo (giới hạn 50 tin mới nhất)
+        public async Task<List<Notification>> GetAllNotificationsAsync(int userId)
+        {
+            return await _context.Notifications
+                .Where(n => n.UserId == userId)
+                .OrderByDescending(n => n.CreatedAt)
+                .Take(50) // Lấy 50 thông báo gần nhất để tránh quá tải
+                .ToListAsync();
+        }
+        // <<< KẾT THÚC THÊM MỚI
+
         public async Task<List<Notification>> GetUnreadNotificationsAsync(int userId)
         {
             return await _context.Notifications
@@ -26,13 +36,11 @@ namespace SCMS.Application
                 .ToListAsync();
         }
 
-        // Đếm số thông báo chưa đọc
         public async Task<int> GetUnreadNotificationCountAsync(int userId)
         {
             return await _context.Notifications.CountAsync(n => n.UserId == userId && !n.IsRead);
         }
 
-        // Tạo một thông báo mới
         public async Task CreateNotificationAsync(int userId, string message, string? link = null)
         {
             var notification = new Notification
@@ -45,7 +53,6 @@ namespace SCMS.Application
             await _context.SaveChangesAsync();
         }
 
-        // Đánh dấu tất cả là đã đọc
         public async Task<bool> MarkAllAsReadAsync(int userId)
         {
             var notifications = await _context.Notifications

@@ -10,10 +10,12 @@ namespace SCMS.WebApp.Services
     public class WalletService
     {
         private readonly HttpClient _httpClient;
+        private readonly NotificationService _notificationService;
 
-        public WalletService(HttpClient httpClient)
+        public WalletService(HttpClient httpClient, NotificationService notificationService)
         {
             _httpClient = httpClient;
+            _notificationService = notificationService;
         }
 
         public async Task<WalletDto?> GetWalletAsync()
@@ -44,6 +46,13 @@ namespace SCMS.WebApp.Services
         {
             var response = await _httpClient.PostAsJsonAsync("api/wallet/topup", request);
             var result = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
+            if (response.IsSuccessStatusCode)
+            {
+                // Yêu cầu NotificationService làm mới số lượng thông báo
+                await _notificationService.RefreshUnreadCountAsync();
+            }
+            // --- KẾT THÚC THAY ĐỔI 2 ---
+
             return (response.IsSuccessStatusCode, result?["message"] ?? "Lỗi không xác định.");
         }
         public async Task<List<TransactionDetailsDto>?> GetStudentTransactionHistoryAsync(int studentId)
