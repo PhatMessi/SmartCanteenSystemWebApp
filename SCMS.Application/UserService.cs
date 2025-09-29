@@ -219,7 +219,7 @@ namespace SCMS.Application
         }
         public async Task<List<User>> GetAllUsersAsync()
         {
-            return await _context.Users.Include(u => u.Role).ToListAsync();
+            return await _context.Users.Include(u => u.Role).Include(u => u.Parent).ToListAsync();
         }
 
         public async Task<List<Role>> GetAllRolesAsync()
@@ -229,7 +229,7 @@ namespace SCMS.Application
 
         public async Task<bool> UpdateUserAsync(int userId, UpdateUserDto userDto)
         {
-            var user = await _context.Users.FindAsync(userId);
+            var user = await _context.Users.Include(u => u.Role).FirstOrDefaultAsync(u => u.UserId == userId);
             if (user == null) return false;
 
             user.FullName = userDto.FullName;
@@ -239,6 +239,29 @@ namespace SCMS.Application
             if (!string.IsNullOrEmpty(userDto.Password))
             {
                 user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(userDto.Password);
+            }
+
+            // Logic cập nhật phụ huynh cho học sinh (chỉ dành cho Admin)
+            var role = await _context.Roles.FindAsync(userDto.RoleId);
+            if (role != null && role.RoleName == "Student")
+            {
+                if (string.IsNullOrWhiteSpace(userDto.ParentEmail))
+                {
+                    user.ParentId = null; // Xóa liên kết nếu email trống
+                }
+                else
+                {
+                    var parent = await _context.Users.FirstOrDefaultAsync(u => u.Email == userDto.ParentEmail && u.Role.RoleName == "Parent");
+                    if (parent != null)
+                    {
+                        user.ParentId = parent.UserId; // Gán ParentId nếu tìm thấy phụ huynh
+                    }
+                    else
+                    {
+                        // Tùy chọn: có thể trả về lỗi nếu không tìm thấy email phụ huynh
+                        // return false; 
+                    }
+                }
             }
 
             await _context.SaveChangesAsync();
@@ -273,7 +296,7 @@ namespace SCMS.Application
             };
         }
 
-        public async Task<(bool Success, string Message)> RequestLinkParentAsync(int studentId, string parentEmail)
+        public async Task<(bool Success, string Message)> LinkParentAsync(int studentId, string parentEmail)
         {
             var student = await _context.Users.FindAsync(studentId);
             if (student.ParentId.HasValue)
@@ -290,42 +313,29 @@ namespace SCMS.Application
                 return (false, "Không tìm thấy tài khoản phụ huynh với email này.");
             }
 
-            // Giả định vai trò "Student" có thể đóng vai trò Phụ huynh, hoặc bạn có thể tạo vai trò "Parent" riêng
-            if (parent.Role.RoleName != "Student" && parent.Role.RoleName != "Parent")
+            if (parent.Role.RoleName != "Parent")
             {
-                return (false, "Tài khoản này không phải là tài khoản hợp lệ để liên kết.");
+                return (false, "Tài khoản này không phải là tài khoản Phụ huynh.");
             }
 
             student.ParentId = parent.UserId;
             await _context.SaveChangesAsync();
 
-            // TODO: Gửi email/thông báo đến phụ huynh để xác nhận
-            // Trong khuôn khổ hiện tại, chúng ta liên kết trực tiếp để đơn giản hóa.
-
-            return (true, "Gửi yêu cầu liên kết thành công.");
+            return (true, "Liên kết với phụ huynh thành công.");
         }
 
         public async Task<(bool Success, string Message)> UnlinkParentAsync(int studentId)
         {
             var student = await _context.Users.FindAsync(studentId);
-            if (!student.ParentId.HasValue)
+            if (student == null || !student.ParentId.HasValue)
             {
-                return (false, "Tài khoản chưa được liên kết.");
+                return (false, "Tài khoản chưa được liên kết hoặc không tồn tại.");
             }
 
-            // TODO: Gửi yêu cầu xác nhận đến Phụ huynh hoặc GVCN
-            // Tương tự, chúng ta hủy liên kết trực tiếp để đơn giản hóa.
+            student.ParentId = null;
+            await _context.SaveChangesAsync();
 
-            // --- SỬA LẠI LOGIC Ở ĐÂY ---
-            // student.ParentId = null; // Xóa dòng này đi
-            // await _context.SaveChangesAsync(); // Và dòng này
-
-            // Thay bằng logic tạo yêu cầu (sẽ hiện thực trong tương lai)
-            // Ví dụ: _context.UnlinkRequests.Add(new UnlinkRequest { StudentId = studentId });
-            // await _context.SaveChangesAsync();
-
-            // Trả về thông báo chính xác cho người dùng
-            return (true, "Yêu cầu hủy liên kết đã được gửi tới Phụ huynh và GVCN để chờ xác nhận.");
+            return (true, "Hủy liên kết thành công.");
         }
         public async Task<bool> IsParentOfStudentAsync(int parentId, int studentId)
         {

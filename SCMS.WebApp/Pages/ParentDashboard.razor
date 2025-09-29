@@ -1,0 +1,48 @@
+﻿@page "/parent-dashboard"
+@attribute [Authorize(Roles = "Parent")]
+
+@inject SCMS.WebApp.Services.UserService WebUserService
+
+<PageTitle>Bảng điều khiển Phụ huynh</PageTitle>
+
+<h3>Các con đã liên kết</h3>
+
+@if (linkedStudents == null)
+{
+    <p><em>Đang tải danh sách...</em></p>
+}
+else if (!linkedStudents.Any())
+{
+    <div class="alert alert-info">
+        Bạn chưa liên kết với tài khoản học sinh nào.
+    </div>
+}
+else
+{
+    <div class="list-group">
+        @foreach (var student in linkedStudents)
+        {
+            <div class="list-group-item list-group-item-action flex-column align-items-start">
+                <div class="d-flex w-100 justify-content-between">
+                    <h5 class="mb-1">@student.FullName</h5>
+                    <small>ID: @student.UserId</small>
+                </div>
+                <p class="mb-1">Email: @student.Email</p>
+
+                <div class="mt-2">
+                    <button class="btn btn-sm btn-outline-success">Nạp tiền</button>
+                    <button class="btn btn-sm btn-outline-info">Xem lịch sử giao dịch</button>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<User>? linkedStudents;
+
+    protected override async Task OnInitializedAsync()
+    {
+        linkedStudents = await WebUserService.GetMyStudentsAsync();
+    }
+}

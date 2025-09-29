@@ -78,7 +78,7 @@ namespace SCMS.API.Controllers
         public async Task<IActionResult> LinkParent(LinkParentRequestDto request)
         {
             var studentId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-            var result = await _userService.RequestLinkParentAsync(studentId, request.ParentEmail);
+            var result = await _userService.LinkParentAsync(studentId, request.ParentEmail);
 
             if (!result.Success)
             {

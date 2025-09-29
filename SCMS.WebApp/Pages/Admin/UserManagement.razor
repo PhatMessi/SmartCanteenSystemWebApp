@@ -216,11 +216,12 @@ else
     {
         userToEditId = userToEdit.UserId;
         updateUserDto = new UpdateUserDto
-            {
-                FullName = userToEdit.FullName,
-                Email = userToEdit.Email,
-                RoleId = userToEdit.RoleId
-            };
+        {
+            FullName = userToEdit.FullName,
+            Email = userToEdit.Email,
+            RoleId = userToEdit.RoleId,
+            ParentEmail = userToEdit.Parent?.Email
+        };
         isEditModalVisible = true;
     }
 

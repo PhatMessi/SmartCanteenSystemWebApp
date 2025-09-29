@@ -24,6 +24,6 @@ namespace SCMS.Domain.DTOs
         // Dùng để so sánh với mật khẩu ở trên
         [Compare("Password", ErrorMessage = "Mật khẩu xác nhận không khớp.")]
         public string? ConfirmPassword { get; set; }
-        // ===== KẾT THÚC SỬA LỖI =====
+        public string? ParentEmail { get; set; }
     }
 }
