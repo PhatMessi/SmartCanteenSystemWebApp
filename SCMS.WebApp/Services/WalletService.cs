@@ -66,5 +66,15 @@ namespace SCMS.WebApp.Services
                 return null;
             }
         }
+        public async Task<(bool Success, string Message)> TopUpForStudentAsync(int studentId, TopUpRequestDto request)
+        {
+            var response = await _httpClient.PostAsJsonAsync($"api/wallet/topup-for-student/{studentId}", request);
+            var result = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
+            if (response.IsSuccessStatusCode)
+            {
+                await _notificationService.RefreshUnreadCountAsync(); // Có thể làm mới thông báo cho cả phụ huynh nếu cần
+            }
+            return (response.IsSuccessStatusCode, result?["message"] ?? "Lỗi không xác định.");
+        }
     }
 }
