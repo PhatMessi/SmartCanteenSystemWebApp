@@ -26,5 +26,22 @@ namespace SCMS.WebApp.Services
             var response = await _httpClient.GetAsync(requestUri);
             return response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<SalesSummaryDto>() : null;
         }
+        public async Task<StudentSpendingReportDto?> GetStudentSpendingReportAsync(int userId, DateTime startDate, DateTime endDate)
+        {
+            var startDateString = startDate.ToString("yyyy-MM-dd");
+            var endDateString = endDate.ToString("yyyy-MM-dd");
+
+            // Thêm userId vào URL request
+            var requestUri = $"api/reports/student-spending?userId={userId}&startDate={startDateString}&endDate={endDateString}";
+
+            try
+            {
+                return await _httpClient.GetFromJsonAsync<StudentSpendingReportDto>(requestUri);
+            }
+            catch (HttpRequestException)
+            {
+                return null;
+            }
+        }
     }
 }

@@ -107,6 +107,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseRouting();
 app.UseCors("AllowBlazorApp");
 app.UseAuthentication();
 app.UseAuthorization();

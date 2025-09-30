@@ -1,0 +1,176 @@
+﻿@page "/spending-report"
+@attribute [Authorize(Roles = "Student, Parent")]
+@inject SCMS.WebApp.Services.ReportService ReportService
+@inject SCMS.WebApp.Services.ToastService ToastService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<PageTitle>Báo cáo Chi tiêu</PageTitle>
+
+<h3><span class="oi oi-bar-chart"></span> Báo cáo Chi tiêu</h3>
+
+<div class="card bg-light mb-4">
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-md">
+                <label for="startDate" class="form-label">Từ ngày</label>
+                <input type="date" id="startDate" class="form-control"
+                       value="@startDate.ToString("yyyy-MM-dd")"
+                       @onchange="OnStartDateChange" />
+            </div>
+            <div class="col-md">
+                <label for="endDate" class="form-label">Đến ngày</label>
+                <input type="date" id="endDate" class="form-control"
+                       value="@endDate.ToString("yyyy-MM-dd")"
+                       @onchange="OnEndDateChange" />
+            </div>
+            <div class="col-md-auto">
+                <button class="btn btn-primary w-100" @onclick="LoadReport" disabled="@(isLoading || !isDateChanged)">
+                    @if (isLoading)
+                    {
+                        <span class="spinner-border spinner-border-sm"></span>
+                    }
+                    else
+                    {
+                        <span>Xem báo cáo</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (report == null && !isLoading)
+{
+    <div class="alert alert-info">Vui lòng chọn khoảng thời gian và nhấn "Xem báo cáo" để bắt đầu.</div>
+}
+else if (isLoading)
+{
+    <p><em>Đang tải báo cáo...</em></p>
+}
+else if (report != null && !report.Orders.Any())
+{
+    <div class="alert alert-warning">Không có đơn hàng nào được tìm thấy trong khoảng thời gian đã chọn.</div>
+}
+else if (report != null)
+{
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <div class="card text-white bg-success h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Tổng chi tiêu</h5>
+                    <p class="card-text fs-4 fw-bold">@report.TotalSpent.ToString("N0") VNĐ</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-3">
+            <div class="card text-white bg-info h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Tổng số đơn hàng</h5>
+                    <p class="card-text fs-4 fw-bold">@report.TotalOrders</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h4>Chi tiết các đơn hàng</h4>
+    @foreach (var order in report.Orders)
+    {
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between">
+                <strong>Đơn hàng #@order.OrderId</strong>
+                <span class="badge @GetStatusBadgeClass(order.Status)">@order.Status</span>
+            </div>
+            <div class="card-body">
+                <p><strong>Ngày đặt:</strong> @order.OrderDate.ToLocalTime().ToString("HH:mm dd/MM/yyyy")</p>
+                <ul class="list-group list-group-flush">
+                    @foreach (var item in order.Items)
+                    {
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            @item.ItemName
+                            <span>SL: @item.Quantity &times; @item.Price.ToString("N0") VNĐ</span>
+                        </li>
+                    }
+                </ul>
+            </div>
+            <div class="card-footer text-end">
+                <strong>Tổng cộng: @order.TotalPrice.ToString("N0") VNĐ</strong>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private StudentSpendingReportDto? report;
+    private DateTime startDate = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+    private DateTime endDate = DateTime.Now;
+    private bool isLoading = false;
+    private bool isDateChanged = false;
+
+    private void OnStartDateChange(ChangeEventArgs e)
+    {
+        if (DateTime.TryParse(e.Value?.ToString(), out var date))
+        {
+            startDate = date;
+            isDateChanged = true;
+        }
+    }
+
+    private void OnEndDateChange(ChangeEventArgs e)
+    {
+        if (DateTime.TryParse(e.Value?.ToString(), out var date))
+        {
+            endDate = date;
+            isDateChanged = true;
+        }
+    }
+
+    private async Task LoadReport()
+    {
+        if (startDate > endDate)
+        {
+            ToastService.ShowToast("Ngày bắt đầu không thể lớn hơn ngày kết thúc.", ToastLevel.Danger);
+            return;
+        }
+
+        isLoading = true;
+
+        try
+        {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            var userIdString = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            if (int.TryParse(userIdString, out int currentUserId))
+            {
+                report = await ReportService.GetStudentSpendingReportAsync(currentUserId, startDate, endDate);
+            }
+            else
+            {
+                ToastService.ShowToast("Không thể xác định người dùng.", ToastLevel.Danger);
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowToast("Đã xảy ra lỗi khi tải báo cáo. Vui lòng thử lại.", ToastLevel.Danger);
+            Console.WriteLine(ex.Message);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private string GetStatusBadgeClass(string status)
+    {
+        return status switch
+        {
+            "Pending Payment" => "bg-warning text-dark",
+            "Paid" => "bg-info text-dark",
+            "Preparing" => "bg-primary",
+            "Ready for Pickup" => "bg-secondary",
+            "Completed" => "bg-success",
+            "Cancelled" => "bg-danger",
+            _ => "bg-dark"
+        };
+    }
+}
