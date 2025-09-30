@@ -320,6 +320,7 @@ namespace SCMS.Application
 
             student.ParentId = parent.UserId;
             await _context.SaveChangesAsync();
+            await _emailService.SendParentLinkNotificationAsync(parent.Email, student.FullName);
 
             return (true, "Liên kết với phụ huynh thành công.");
         }

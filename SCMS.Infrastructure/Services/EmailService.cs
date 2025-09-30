@@ -70,5 +70,17 @@ namespace SCMS.Infrastructure.Services
 
             await SendEmailAsync(toEmail, subject, body);
         }
+        public async Task SendParentLinkNotificationAsync(string parentEmail, string studentName)
+        {
+            var subject = "Thông báo liên kết tài khoản - Smart Canteen";
+            var body = $@"
+            <p>Xin chào,</p>
+            <p>Tài khoản học sinh <b>{studentName}</b> vừa thực hiện liên kết đến tài khoản phụ huynh của bạn trên hệ thống Smart Canteen.</p>
+            <p>Từ bây giờ, bạn có thể quản lý ví và theo dõi hoạt động của học sinh trong bảng điều khiển của mình.</p>
+            <p>Nếu bạn cho rằng đây là một sự nhầm lẫn, vui lòng liên hệ với quản trị viên nhà trường.</p>
+            <p>Trân trọng,<br>Hệ thống Smart Canteen</p>";
+
+            await SendEmailAsync(parentEmail, subject, body);
+        }
     }
 }

@@ -1,12 +1,19 @@
 ﻿using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Text.Json;
 using System.Threading.Tasks;
 using SCMS.Domain;
 using SCMS.Domain.DTOs;
 
 namespace SCMS.WebApp.Services
 {
+    // Lớp nội bộ đơn giản để giúp đọc message từ API
+    internal class ApiResponseDto
+    {
+        public string Message { get; set; }
+    }
+
     public class UserService
     {
         private readonly HttpClient _httpClient;
@@ -32,8 +39,6 @@ namespace SCMS.WebApp.Services
             return null;
         }
 
-        // --- BẮT ĐẦU CODE MỚI ---
-
         public async Task<bool> UpdateUserAsync(int userId, UpdateUserDto userDto)
         {
             var response = await _httpClient.PutAsJsonAsync($"api/users/{userId}", userDto);
@@ -58,23 +63,50 @@ namespace SCMS.WebApp.Services
             }
         }
 
+        // --- SỬA LỖI TẠI ĐÂY ---
         public async Task<(bool Success, string Message)> LinkParentAsync(LinkParentRequestDto request)
         {
             var response = await _httpClient.PostAsJsonAsync("api/users/link-parent", request);
-            var result = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
-            var message = result?["message"] ?? "Đã xảy ra lỗi.";
 
-            return (response.IsSuccessStatusCode, message);
+            if (response.IsSuccessStatusCode)
+            {
+                // Nếu thành công, đọc message thành công
+                var result = await response.Content.ReadFromJsonAsync<ApiResponseDto>();
+                return (true, result?.Message ?? "Thao tác thành công.");
+            }
+            else
+            {
+                // Nếu thất bại, đọc message lỗi
+                try
+                {
+                    var errorResult = await response.Content.ReadFromJsonAsync<ApiResponseDto>();
+                    return (false, errorResult?.Message ?? "Yêu cầu không hợp lệ.");
+                }
+                catch (JsonException)
+                {
+                    // Nếu body lỗi không có trường message (ví dụ lỗi validation mặc định)
+                    return (false, "Thông tin cung cấp không hợp lệ. Vui lòng kiểm tra lại.");
+                }
+            }
         }
 
+        // --- SỬA LỖI TẠI ĐÂY ---
         public async Task<(bool Success, string Message)> UnlinkParentAsync()
         {
             var response = await _httpClient.PostAsync("api/users/unlink-parent", null);
-            var result = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
-            var message = result?["message"] ?? "Đã xảy ra lỗi.";
 
-            return (response.IsSuccessStatusCode, message);
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<ApiResponseDto>();
+                return (true, result?.Message ?? "Hủy liên kết thành công.");
+            }
+            else
+            {
+                var errorResult = await response.Content.ReadFromJsonAsync<ApiResponseDto>();
+                return (false, errorResult?.Message ?? "Không thể hủy liên kết.");
+            }
         }
+
         public async Task<List<Role>?> GetAllRolesAsync()
         {
             try
@@ -86,6 +118,7 @@ namespace SCMS.WebApp.Services
                 return null;
             }
         }
+
         public async Task<List<User>?> GetMyStudentsAsync()
         {
             try

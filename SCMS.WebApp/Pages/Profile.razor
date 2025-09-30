@@ -163,6 +163,13 @@ else
         isLinkingInProgress = true;
         linkMessage = null;
 
+        if (string.IsNullOrWhiteSpace(parentEmailToLink))
+        {
+            linkSuccess = false;
+            linkMessage = "Vui lòng nhập email của phụ huynh.";
+            isLinkingInProgress = false;
+            return; // Dừng thực thi ngay tại đây
+        }
         var request = new LinkParentRequestDto { ParentEmail = parentEmailToLink };
         var result = await WebUserService.LinkParentAsync(request);
         linkSuccess = result.Success;

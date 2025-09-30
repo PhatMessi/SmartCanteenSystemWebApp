@@ -11,5 +11,6 @@ namespace SCMS.Infrastructure.Services
     {
         Task SendPasswordResetEmailAsync(string toEmail, string resetLink);
         Task SendWelcomeEmailAsync(string toEmail, string temporaryPassword);
+        Task SendParentLinkNotificationAsync(string parentEmail, string studentName);
     }
 }
