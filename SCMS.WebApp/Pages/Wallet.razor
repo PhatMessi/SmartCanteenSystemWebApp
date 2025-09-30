@@ -100,9 +100,9 @@
 
     private async Task HandleTopUp()
     {
-        if (topUpAmount <= 0)
+        if (topUpAmount <= 10000)
         {
-            topUpMessage = "Số tiền phải lớn hơn 0.";
+            topUpMessage = "Số tiền phải lớn hơn 10000.";
             topUpSuccess = false;
             return;
         }
