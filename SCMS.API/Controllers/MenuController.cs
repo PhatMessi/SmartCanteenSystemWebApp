@@ -1,5 +1,6 @@
 ﻿// File: SCMS.API/Controllers/MenuController.cs
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http; // THÊM using này
 using Microsoft.AspNetCore.Mvc;
 using SCMS.Application;
 using SCMS.Domain.DTOs;
@@ -19,14 +20,13 @@ namespace SCMS.API.Controllers
         }
 
         [HttpGet]
-        [AllowAnonymous] // Cho phép xem menu mà không cần đăng nhập
+        [AllowAnonymous]
         public async Task<IActionResult> Get([FromQuery] string? searchTerm, [FromQuery] int? categoryId)
         {
             var menuItems = await _menuService.GetMenuItemsAsync(searchTerm, categoryId);
             return Ok(menuItems);
         }
 
-        // Endpoint mới để lấy danh sách categories
         [HttpGet("categories")]
         [AllowAnonymous]
         public async Task<IActionResult> GetCategories()
@@ -43,23 +43,25 @@ namespace SCMS.API.Controllers
             return Ok(menuItem);
         }
 
+
         [HttpPost]
-        [Authorize(Roles = "CanteenManager,SystemAdmin")] // Sử dụng tên vai trò
-        public async Task<IActionResult> Create(CreateMenuItemDto menuItemDto)
+        [Authorize(Roles = "CanteenManager,SystemAdmin")]
+        public async Task<IActionResult> Create([FromForm] CreateMenuItemDto menuItemDto, IFormFile? imageFile)
         {
-            var createdItem = await _menuService.CreateMenuItemAsync(menuItemDto);
+            var createdItem = await _menuService.CreateMenuItemAsync(menuItemDto, imageFile);
+
             if (createdItem == null)
             {
-                return BadRequest("Invalid CategoryId.");
+                return BadRequest("Invalid CategoryId or error processing image.");
             }
             return CreatedAtAction(nameof(GetById), new { id = createdItem.ItemId }, createdItem);
         }
 
         [HttpPut("{id}")]
         [Authorize(Roles = "CanteenManager,SystemAdmin")]
-        public async Task<IActionResult> Update(int id, UpdateMenuItemDto menuItemDto)
+        public async Task<IActionResult> Update(int id, [FromForm] UpdateMenuItemDto menuItemDto, IFormFile? imageFile)
         {
-            var success = await _menuService.UpdateMenuItemAsync(id, menuItemDto);
+            var success = await _menuService.UpdateMenuItemAsync(id, menuItemDto, imageFile);
             if (!success) return NotFound();
             return NoContent();
         }

@@ -23,4 +23,8 @@
 		<ProjectReference Include="..\SCMS.Infrastructure\SCMS.Infrastructure.csproj" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <Folder Include="wwwroot\images\menu\" />
+	</ItemGroup>
+
 </Project>

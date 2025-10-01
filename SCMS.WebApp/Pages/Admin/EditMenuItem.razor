@@ -1,9 +1,11 @@
 ﻿@page "/admin/menu/edit/{Id:int}"
 @attribute [Authorize(Roles = "CanteenManager, SystemAdmin")]
 
+@using Microsoft.AspNetCore.Components.Forms
 @inject SCMS.WebApp.Services.MenuService WebAppMenuService
 @inject NavigationManager NavigationManager
 @inject SCMS.WebApp.Services.ToastService WebAppToastService
+@inject IConfiguration Configuration
 
 <h3>Chỉnh sửa món ăn</h3>
 
@@ -17,60 +19,148 @@ else
         <DataAnnotationsValidator />
         <ValidationSummary />
 
-        <div class="mb-3">
-            <label class="form-label">Tên món ăn:</label>
-            <InputText class="form-control" @bind-Value="menuItemToUpdate.Name" />
-        </div>
+        <div class="row">
+            <div class="col-md-8">
+                <div class="mb-3">
+                    <label class="form-label">Tên món ăn:</label>
+                    <InputText class="form-control" @bind-Value="menuItemToUpdate.Name" />
+                    <ValidationMessage For="@(() => menuItemToUpdate.Name)" />
+                </div>
 
-        <div class="mb-3">
-            <label class="form-label">Danh mục:</label>
-            <InputSelect class="form-select" @bind-Value="menuItemToUpdate.CategoryId">
-                <option value="0">-- Vui lòng chọn danh mục --</option>
-                @foreach (var category in categories)
+                <div class="mb-3">
+                    <label class="form-label">Danh mục:</label>
+                    <InputSelect class="form-select" @bind-Value="menuItemToUpdate.CategoryId">
+                        <option value="0">-- Vui lòng chọn danh mục --</option>
+                        @foreach (var category in categories)
+                        {
+                            <option value="@category.CategoryId">@category.CategoryName</option>
+                        }
+                    </InputSelect>
+                    <ValidationMessage For="@(() => menuItemToUpdate.CategoryId)" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Mô tả:</label>
+                    <InputTextArea class="form-control" @bind-Value="menuItemToUpdate.Description" />
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="mb-3">
+                    <label class="form-label">Ảnh hiện tại:</label>
+                    <div>
+                        <img src="@CurrentImageUrl" style="width: 100%; max-width: 250px; height: auto; object-fit: cover; border-radius: 8px;" alt="Ảnh món ăn" />
+                    </div>
+                </div>
+
+                @* --- BẮT ĐẦU THAY ĐỔI --- *@
+                <div class="mb-3">
+                    <label class="form-label">Thay đổi hình ảnh (tùy chọn):</label>
+                    <div class="form-check">
+                        @* SỬA LỖI CÚ PHÁP Ở ĐÂY *@
+                        <input class="form-check-input" type="radio" name="imageSource" id="uploadRadio" value="upload" checked @onchange=@(() => imageSourceOption = "upload") />
+                        <label class="form-check-label" for="uploadRadio">
+                            Tải ảnh mới
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        @* SỬA LỖI CÚ PHÁP Ở ĐÂY *@
+                        <input class="form-check-input" type="radio" name="imageSource" id="urlRadio" value="url" @onchange=@(() => imageSourceOption = "url") />
+                        <label class="form-check-label" for="urlRadio">
+                            Dùng link URL mới
+                        </label>
+                    </div>
+                </div>
+
+                @if (imageSourceOption == "upload")
                 {
-                    <option value="@category.CategoryId">@category.CategoryName</option>
+                    <div class="mb-3">
+                        <label class="form-label">Chọn file ảnh:</label>
+                        <InputFile class="form-control" OnChange="LoadImage" accept=".jpg, .jpeg, .png" />
+                    </div>
+                    @if (newImageDataUrl != null)
+                    {
+                        <div class="mb-3">
+                            <label>Xem trước ảnh mới:</label>
+                            <div><img src="@newImageDataUrl" style="max-width: 200px; max-height: 200px; object-fit: cover; border-radius: 8px;" /></div>
+                        </div>
+                    }
                 }
-            </InputSelect>
-            <ValidationMessage For="@(() => menuItemToUpdate.CategoryId)" />
+                else if (imageSourceOption == "url")
+                {
+                    <div class="mb-3">
+                        <label class="form-label">Link hình ảnh mới (URL):</label>
+                        <InputText class="form-control" @bind-Value="menuItemToUpdate.ImageUrl" placeholder="https://example.com/image.jpg" />
+                    </div>
+                }
+                @* --- KẾT THÚC THAY ĐỔI --- *@
+            </div>
         </div>
 
-        <div class="mb-3">
-            <label class="form-label">Link hình ảnh (URL):</label>
-            <InputText class="form-control" @bind-Value="menuItemToUpdate.ImageUrl" />
-        </div>
-        <div class="mb-3">
-            <label class="form-label">Mô tả:</label>
-            <InputTextArea class="form-control" @bind-Value="menuItemToUpdate.Description" />
-        </div>
-        <div class="mb-3">
-            <label class="form-label">Giá (VNĐ):</label>
-            <InputNumber class="form-control" @bind-Value="menuItemToUpdate.Price" />
-        </div>
-        <div class="mb-3">
-            <label class="form-label">Số lượng tồn kho:</label>
-            <InputNumber class="form-control" @bind-Value="menuItemToUpdate.InventoryQuantity" />
+        <hr />
+
+        <div class="row">
+            <div class="col-md-4">
+                <div class="mb-3">
+                    <label class="form-label">Giá (VNĐ):</label>
+                    <InputNumber class="form-control" @bind-Value="menuItemToUpdate.Price" />
+                    <ValidationMessage For="@(() => menuItemToUpdate.Price)" />
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="mb-3">
+                    <label class="form-label">Số lượng tồn kho:</label>
+                    <InputNumber class="form-control" @bind-Value="menuItemToUpdate.InventoryQuantity" />
+                </div>
+            </div>
+            <div class="col-md-4 d-flex align-items-center">
+                <div class="mb-3 form-check">
+                    <InputCheckbox id="isAvailableCheck" class="form-check-input" @bind-Value="menuItemToUpdate.IsAvailable" />
+                    <label for="isAvailableCheck" class="form-check-label">Đang bán</label>
+                </div>
+            </div>
         </div>
 
-        <div class="mb-3 form-check">
-            <InputCheckbox class="form-check-input" @bind-Value="menuItemToUpdate.IsAvailable" />
-            <label class="form-check-label">Đang bán</label>
-        </div>
         <button type="submit" class="btn btn-success">Lưu thay đổi</button>
         <button type="button" class="btn btn-secondary" @onclick="GoBack">Hủy</button>
     </EditForm>
 }
-
 
 @code {
     [Parameter]
     public int Id { get; set; }
 
     private UpdateMenuItemDto? menuItemToUpdate;
-    private List<Category>? categories; // Biến lưu danh sách danh mục
+    private List<Category>? categories;
+    private IBrowserFile? selectedFile;
+    private string? newImageDataUrl;
+    private string apiBaseUrl = string.Empty;
+    private string originalImageUrl = string.Empty;
+
+    // BIẾN MỚI để lưu lựa chọn của người dùng
+    private string imageSourceOption = "upload";
+
+    // THUỘC TÍNH MỚI để hiển thị ảnh hiện tại một cách chính xác
+    private string CurrentImageUrl
+    {
+        get
+        {
+            if (menuItemToUpdate == null || string.IsNullOrEmpty(menuItemToUpdate.ImageUrl))
+            {
+                return $"{apiBaseUrl}/images/default-food.png"; // Fallback
+            }
+            if (menuItemToUpdate.ImageUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+            {
+                return menuItemToUpdate.ImageUrl; // Nếu là URL tuyệt đối, dùng luôn
+            }
+            return $"{apiBaseUrl}{menuItemToUpdate.ImageUrl}"; // Nếu là URL tương đối, ghép với base URL
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
-        // Tải đồng thời thông tin món ăn và danh sách danh mục
+        // Lấy BaseAddress từ HttpClient đã được cấu hình sẵn trong MenuService
+        // Đây là cách làm đúng và an toàn nhất.
+        apiBaseUrl = WebAppMenuService.GetApiBaseUrl();
+
         var menuItemTask = WebAppMenuService.GetMenuItemByIdAsync(Id);
         var categoriesTask = WebAppMenuService.GetCategoriesAsync();
 
@@ -81,27 +171,66 @@ else
 
         if (existingItem != null)
         {
-            // Chuyển đổi từ MenuItem sang UpdateMenuItemDto để điền vào form
             menuItemToUpdate = new UpdateMenuItemDto
-                {
-                    Name = existingItem.Name,
-                    Description = existingItem.Description,
-                    Price = existingItem.Price,
-                    InventoryQuantity = existingItem.InventoryQuantity,
-                    // --- BẮT ĐẦU THAY ĐỔI: Gán các giá trị còn thiếu ---
-                    ImageUrl = existingItem.ImageUrl,
-                    CategoryId = existingItem.CategoryId,
-                    IsAvailable = existingItem.IsAvailable
-                    // --- KẾT THÚC THAY ĐỔI ---
-                };
+            {
+                Name = existingItem.Name,
+                Description = existingItem.Description,
+                Price = existingItem.Price,
+                InventoryQuantity = existingItem.InventoryQuantity,
+                ImageUrl = existingItem.ImageUrl,
+                CategoryId = existingItem.CategoryId,
+                IsAvailable = existingItem.IsAvailable
+            };
+            originalImageUrl = existingItem.ImageUrl;
         }
     }
+
+
+    private async Task LoadImage(InputFileChangeEventArgs e)
+    {
+        selectedFile = e.File;
+        if (selectedFile != null)
+        {
+            // Bọc toàn bộ logic trong try-catch để xử lý lỗi
+            try
+            {
+                // Giới hạn kích thước file upload ở client-side để tránh lỗi
+                const long maxFileSize = 1024 * 1024 * 5; // 5MB
+                var format = selectedFile.ContentType;
+
+                // Sử dụng stream có giới hạn kích thước để đọc file
+                using var stream = selectedFile.OpenReadStream(maxFileSize);
+                using var ms = new MemoryStream();
+                await stream.CopyToAsync(ms);
+
+                newImageDataUrl = $"data:{format};base64,{Convert.ToBase64String(ms.ToArray())}";
+                StateHasChanged(); // Cập nhật UI để hiển thị preview
+            }
+            catch (Exception ex)
+            {
+                // Nếu có lỗi (ví dụ: file quá lớn), thông báo cho người dùng
+                newImageDataUrl = null; // Xóa preview cũ (nếu có)
+                WebAppToastService.ShowToast($"Lỗi xử lý ảnh: {ex.Message}", ToastLevel.Danger);
+                StateHasChanged(); // Cập nhật UI để xóa preview
+            }
+        }
+    }
+
 
     private async Task HandleUpdateMenuItem()
     {
         if (menuItemToUpdate != null)
         {
-            var success = await WebAppMenuService.UpdateMenuItemAsync(Id, menuItemToUpdate);
+            var fileToUpload = imageSourceOption == "upload" ? selectedFile : null;
+
+            // Nếu người dùng chọn upload, ta cần đặt lại ImageUrl về giá trị gốc
+            // để backend có thể so sánh và xóa file cũ nếu cần.
+            if (imageSourceOption == "upload")
+            {
+                menuItemToUpdate.ImageUrl = originalImageUrl;
+            }
+
+            var success = await WebAppMenuService.UpdateMenuItemWithImageAsync(Id, menuItemToUpdate, fileToUpload);
             if (success)
             {
                 WebAppToastService.ShowToast("Cập nhật món ăn thành công!");
