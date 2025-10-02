@@ -1,5 +1,6 @@
 ﻿@page "/profile"
 @attribute [Authorize]
+@using System.ComponentModel.DataAnnotations
 @inject AuthService AuthService
 @inject NavigationManager NavigationManager
 @inject SCMS.WebApp.Services.UserService WebUserService
@@ -85,46 +86,65 @@ else
             </div>
         </div>
     </AuthorizeView>
+
+    <hr />
+
+    <button class="btn btn-primary" @onclick="ShowChangePasswordModal">
+        Đổi mật khẩu
+    </button>
+
+    @if (isChangePasswordModalVisible)
+    {
+        <div class="modal-backdrop fade show"></div>
+        <div class="modal fade show" tabindex="-1" style="display: block;" role="dialog">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <EditForm Model="changePasswordDto" OnValidSubmit="HandleChangePassword">
+                        <DataAnnotationsValidator />
+                        <div class="modal-header">
+                            <h5 class="modal-title">Đổi mật khẩu</h5>
+                            <button type="button" class="btn-close" @onclick="HideChangePasswordModal"></button>
+                        </div>
+                        <div class="modal-body">
+                            @if (!string.IsNullOrEmpty(changePasswordMessage))
+                            {
+                                <div class="alert @(changePasswordSuccess ? "alert-success" : "alert-danger")">@changePasswordMessage</div>
+                            }
+
+                            <div class="mb-3">
+                                <label>Mật khẩu cũ</label>
+                                <InputText @bind-Value="changePasswordDto.OldPassword" type="password" class="form-control" />
+                                <ValidationMessage For="@(() => changePasswordDto.OldPassword)" />
+                            </div>
+
+                            <div class="mb-3">
+                                <label>Mật khẩu mới</label>
+                                <InputText @bind-Value="changePasswordDto.NewPassword" type="password" class="form-control" />
+                                <ValidationMessage For="@(() => changePasswordDto.NewPassword)" />
+                            </div>
+
+                            <div class="mb-3">
+                                <label>Xác nhận mật khẩu mới</label>
+                                <InputText @bind-Value="confirmPassword" type="password" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" @onclick="HideChangePasswordModal">Hủy</button>
+                            <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+                                @if (isSubmitting)
+                                {
+                                    <span class="spinner-border spinner-border-sm"></span>
+                                }
+                                Lưu thay đổi
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    }
 }
 
-<div class="card">
-    <div class="card-header">Đổi mật khẩu</div>
-    <div class="card-body">
-        @if (!string.IsNullOrEmpty(changePasswordMessage))
-        {
-            <div class="alert @(changePasswordSuccess ? "alert-success" : "alert-danger")">@changePasswordMessage</div>
-        }
-
-        <EditForm Model="changePasswordDto" OnValidSubmit="HandleChangePassword">
-            <DataAnnotationsValidator />
-
-            <div class="mb-3">
-                <label>Mật khẩu cũ</label>
-                <InputText @bind-Value="changePasswordDto.OldPassword" type="password" class="form-control" />
-                <ValidationMessage For="@(() => changePasswordDto.OldPassword)" />
-            </div>
-
-            <div class="mb-3">
-                <label>Mật khẩu mới</label>
-                <InputText @bind-Value="changePasswordDto.NewPassword" type="password" class="form-control" />
-                <ValidationMessage For="@(() => changePasswordDto.NewPassword)" />
-            </div>
-
-            <div class="mb-3">
-                <label>Xác nhận mật khẩu mới</label>
-                <InputText @bind-Value="confirmPassword" type="password" class="form-control" />
-            </div>
-
-            <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
-                @if (isSubmitting)
-                {
-                    <span class="spinner-border spinner-border-sm"></span>
-                }
-                Lưu thay đổi
-            </button>
-        </EditForm>
-    </div>
-</div>
 
 @code {
     private UserProfile? userProfile;
@@ -140,7 +160,9 @@ else
     private string? linkMessage;
     private bool linkSuccess = false;
     private bool isLinkingInProgress = false;
-    private bool isPasswordChangeInProgress = false;
+
+    // THAY ĐỔI 2: Thêm biến điều khiển modal
+    private bool isChangePasswordModalVisible = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -157,9 +179,23 @@ else
         isLoadingLink = false;
     }
 
+    // THAY ĐỔI 3: Thêm các phương thức để hiển thị/ẩn modal
+    private void ShowChangePasswordModal()
+    {
+        // Reset form và thông báo mỗi khi mở
+        changePasswordDto = new();
+        confirmPassword = "";
+        changePasswordMessage = null;
+        isChangePasswordModalVisible = true;
+    }
+
+    private void HideChangePasswordModal()
+    {
+        isChangePasswordModalVisible = false;
+    }
+
     private async Task HandleLinkParent()
     {
-        // --- THAY ĐỔI 2: Cập nhật phương thức ---
         isLinkingInProgress = true;
         linkMessage = null;
 
@@ -168,7 +204,7 @@ else
             linkSuccess = false;
             linkMessage = "Vui lòng nhập email của phụ huynh.";
             isLinkingInProgress = false;
-            return; // Dừng thực thi ngay tại đây
+            return;
         }
         var request = new LinkParentRequestDto { ParentEmail = parentEmailToLink };
         var result = await WebUserService.LinkParentAsync(request);
@@ -185,7 +221,6 @@ else
 
     private async Task HandleUnlinkParent()
     {
-        // --- THAY ĐỔI 2: Cập nhật phương thức ---
         isLinkingInProgress = true;
         linkMessage = null;
 
@@ -210,17 +245,20 @@ else
             return;
         }
 
-        // --- THAY ĐỔI 2: Cập nhật phương thức ---
-        isPasswordChangeInProgress = true;
+        isSubmitting = true;
 
         var response = await AuthService.ChangePasswordAsync(changePasswordDto);
         if (response.IsSuccessStatusCode)
         {
             changePasswordSuccess = true;
             changePasswordMessage = "Đổi mật khẩu thành công! Vui lòng đăng nhập lại.";
-            changePasswordDto = new();
-            confirmPassword = "";
+
+            // Giữ thông báo trong 2 giây trước khi đăng xuất
+            StateHasChanged(); // Cập nhật UI để hiển thị thông báo thành công
             await Task.Delay(2000);
+
+            // Đóng modal và đăng xuất
+            HideChangePasswordModal();
             await AuthService.LogoutAsync();
             NavigationManager.NavigateTo("/login");
         }
@@ -230,6 +268,6 @@ else
             changePasswordMessage = "Mật khẩu cũ không đúng. Vui lòng thử lại.";
         }
 
-        isPasswordChangeInProgress = false;
+        isSubmitting = false;
     }
 }
