@@ -62,7 +62,7 @@ builder.Services.AddHttpClient("AuthorizedClient", client =>
 // <<< KẾT THÚC THAY ĐỔI
 
 // Đăng ký các service không cần HttpClient
-builder.Services.AddSingleton<CartService>();
+builder.Services.AddScoped<CartService>();
 builder.Services.AddSingleton<ToastService>();
 builder.Services.AddScoped<ConfirmDialogService>();
 

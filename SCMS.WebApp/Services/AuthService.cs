@@ -38,13 +38,15 @@ namespace SCMS.WebApp.Services
         private readonly ILocalStorageService _localStorage;
         private readonly AuthenticationStateProvider _authStateProvider;
         private readonly TokenService _tokenService;
+        private readonly CartService _cartService;
 
-        public AuthService(HttpClient httpClient, ILocalStorageService localStorage, AuthenticationStateProvider authStateProvider, TokenService tokenService)
+        public AuthService(HttpClient httpClient, ILocalStorageService localStorage, AuthenticationStateProvider authStateProvider, TokenService tokenService, CartService cartService)
         {
             _httpClient = httpClient;
             _localStorage = localStorage;
             _authStateProvider = authStateProvider;
             _tokenService = tokenService;
+            _cartService = cartService;
         }
 
         // === THAY ĐỔI START ===
@@ -87,6 +89,7 @@ namespace SCMS.WebApp.Services
             await _localStorage.RemoveItemAsync("authToken");
             _tokenService.Token = null;
             _httpClient.DefaultRequestHeaders.Authorization = null;
+            _cartService.ClearCart();
             ((CustomAuthStateProvider)_authStateProvider).NotifyAuthenticationStateChanged();
         }
 
