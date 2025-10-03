@@ -3,8 +3,11 @@
 
 @inject OrderService OrderService
 @inject ToastService ToastService
+@inject ConfirmDialogService DialogService
 
 <h3>Quản lý Đơn hàng</h3>
+
+<RejectOrderDialog @ref="rejectDialog" OnConfirm="HandleRejectConfirm" />
 
 @if (orders == null)
 {
@@ -53,7 +56,7 @@ else
                                 <button class="btn btn-success" @onclick="() => ProgressOrder(order)">
                                     <i class="oi oi-check"></i> Nhận đơn
                                 </button>
-                                <button class="btn btn-danger" @onclick="() => RejectOrder(order)">
+                                <button class="btn btn-danger" @onclick="() => ShowRejectDialog(order)">
                                     <i class="oi oi-x"></i> Từ chối
                                 </button>
                             }
@@ -80,6 +83,8 @@ else
 @code {
     private List<Order>? orders;
     private bool _hasLoadedData = false;
+    private RejectOrderDialog rejectDialog;
+    private Order? orderToProcess;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -106,6 +111,12 @@ else
 
     private async Task ProgressOrder(Order order)
     {
+        string message = $"Bạn có chắc chắn muốn nhận và chuẩn bị\nĐơn hàng #{order.OrderId}?";
+        if (order.Status == "Preparing") message = $"Bạn có chắc chắn muốn báo Đơn hàng #{order.OrderId} đã sẵn sàng?";
+        if (order.Status == "Ready for Pickup") message = $"Bạn có chắc chắn muốn hoàn thành Đơn hàng #{order.OrderId}?";
+
+        bool confirmed = await DialogService.Show("Xác nhận", message);
+        if (!confirmed) return;
         var result = await OrderService.ProgressOrderAsync(order.OrderId);
         ToastService.ShowToast(result.Message, result.Success ? ToastLevel.Success : ToastLevel.Danger);
 
@@ -128,21 +139,29 @@ else
         }
     }
 
-    private async Task RejectOrder(Order order)
+    private void ShowRejectDialog(Order order)
     {
-        // Thêm hộp thoại xác nhận nếu muốn
-        var result = await OrderService.RejectOrderAsync(order.OrderId);
+        orderToProcess = order;
+        rejectDialog.Show();
+    }
+
+    private async Task HandleRejectConfirm(string reason)
+    {
+        if (orderToProcess == null) return;
+
+        var result = await OrderService.RejectOrderAsync(orderToProcess.OrderId, reason);
         ToastService.ShowToast(result.Message, result.Success ? ToastLevel.Success : ToastLevel.Danger);
 
         if (result.Success)
         {
-            var index = orders.FindIndex(o => o.OrderId == order.OrderId);
+            var index = orders.FindIndex(o => o.OrderId == orderToProcess.OrderId);
             if (index != -1)
             {
-                orders.RemoveAt(index); // Xóa đơn hàng đã từ chối khỏi danh sách
+                orders.RemoveAt(index);
             }
             StateHasChanged();
         }
+        orderToProcess = null; // Reset
     }
 
     private string GetStatusBadgeClass(string status)

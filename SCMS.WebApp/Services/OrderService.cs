@@ -189,11 +189,15 @@ namespace SCMS.WebApp.Services
             }
         }
 
-        public async Task<OperationResult> RejectOrderAsync(int orderId)
+        public async Task<OperationResult> RejectOrderAsync(int orderId, string reason)
         {
             try
             {
-                var response = await _httpClient.PostAsync($"api/orders/{orderId}/reject", null);
+                // --- BẮT ĐẦU THAY ĐỔI ---
+                var dto = new UpdateOrderStatusDto { Status = "Cancelled", RejectionReason = reason };
+                var response = await _httpClient.PostAsJsonAsync($"api/orders/{orderId}/reject", dto);
+                // --- KẾT THÚC THAY ĐỔI ---
+
                 var result = await response.Content.ReadFromJsonAsync<ErrorResponse>();
                 return new OperationResult
                 {

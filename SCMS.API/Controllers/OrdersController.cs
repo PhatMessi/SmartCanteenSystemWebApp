@@ -57,9 +57,17 @@ namespace SCMS.API.Controllers
         // Endpoint để từ chối một đơn hàng
         [HttpPost("{orderId}/reject")]
         //[Authorize(Roles = "CanteenStaff,CanteenManager,SystemAdmin")]
-        public async Task<IActionResult> RejectOrder(int orderId)
+        public async Task<IActionResult> RejectOrder(int orderId, [FromBody] UpdateOrderStatusDto dto)
         {
-            var result = await _orderService.RejectOrderAsync(orderId);
+            // --- BẮT ĐẦU THAY ĐỔI ---
+            if (dto == null || string.IsNullOrWhiteSpace(dto.RejectionReason))
+            {
+                return BadRequest(new { message = "Vui lòng cung cấp lý do từ chối." });
+            }
+
+            var result = await _orderService.RejectOrderAsync(orderId, dto.RejectionReason);
+            // --- KẾT THÚC THAY ĐỔI ---
+
             if (!result.Success)
             {
                 return BadRequest(new { message = result.Message });

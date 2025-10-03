@@ -24,6 +24,9 @@ namespace SCMS.Domain
         [Required]
         [MaxLength(50)]
         public string Status { get; set; } // e.g., Pending, Paid, Preparing, Ready, Completed
+        
+        [MaxLength(255)] // Giới hạn độ dài lý do
+        public string? RejectionReason { get; set; }
 
         public virtual ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
     }

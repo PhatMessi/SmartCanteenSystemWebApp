@@ -134,7 +134,7 @@ namespace SCMS.Application
             return (true, $"Đã cập nhật đơn hàng sang trạng thái '{nextStatus}'.", order);
         }
 
-        public async Task<(bool Success, string Message)> RejectOrderAsync(int orderId)
+        public async Task<(bool Success, string Message)> RejectOrderAsync(int orderId, string rejectionReason)
         {
             var order = await _context.Orders.FindAsync(orderId);
             if (order == null)
@@ -142,7 +142,6 @@ namespace SCMS.Application
                 return (false, "Không tìm thấy đơn hàng.");
             }
 
-            // QUAN TRỌNG: Chỉ cho phép từ chối đơn hàng đã thanh toán
             if (order.Status != "Paid")
             {
                 return (false, $"Không thể từ chối đơn hàng đang ở trạng thái '{order.Status}'.");
@@ -164,8 +163,8 @@ namespace SCMS.Application
                 var orderItems = await _context.OrderItems.Where(oi => oi.OrderId == orderId).ToListAsync();
                 var menuItemIds = orderItems.Select(oi => oi.ItemId).ToList();
                 var menuItemsToUpdate = await _context.MenuItems
-                                                      .Where(mi => menuItemIds.Contains(mi.ItemId))
-                                                      .ToListAsync();
+                                              .Where(mi => menuItemIds.Contains(mi.ItemId))
+                                              .ToListAsync();
                 foreach (var orderItem in orderItems)
                 {
                     var menuItem = menuItemsToUpdate.FirstOrDefault(mi => mi.ItemId == orderItem.ItemId);
@@ -175,11 +174,16 @@ namespace SCMS.Application
                     }
                 }
 
-                // 3. Cập nhật trạng thái đơn hàng
+                // 3. Cập nhật trạng thái và LƯU LÝ DO TỪ CHỐI
                 order.Status = "Cancelled";
+                order.RejectionReason = rejectionReason; // <-- LƯU LÝ DO VÀO DB
 
                 await _context.SaveChangesAsync();
-                await _notificationService.CreateNotificationAsync(order.UserId, $"Đơn hàng #{order.OrderId} của bạn đã bị hủy và tiền đã được hoàn lại.", "/my-orders/");
+
+                // 4. Gửi thông báo kèm lý do
+                string notificationMessage = $"Đơn hàng #{order.OrderId} của bạn đã bị hủy vì lý do: '{rejectionReason}'. Tiền đã được hoàn lại.";
+                await _notificationService.CreateNotificationAsync(order.UserId, notificationMessage, "/my-orders/");
+
                 await transaction.CommitAsync();
 
                 return (true, "Từ chối đơn hàng thành công và đã hoàn tiền cho khách.");

@@ -7,5 +7,6 @@ namespace SCMS.Domain.DTOs
     {
         [Required]
         public string Status { get; set; }
+        public string? RejectionReason { get; set; }
     }
 }
