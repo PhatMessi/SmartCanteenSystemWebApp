@@ -472,5 +472,46 @@ namespace SCMS.Application
                 return new UpdateOrderResult { Success = false, Message = "Đã xảy ra lỗi hệ thống khi cập nhật đơn hàng.", ErrorCode = "SERVER_ERROR" };
             }
         }
+        public async Task AutoCancelUnpaidOrdersAsync()
+        {
+            // 1. Xác định mốc thời gian (10 phút trước)
+            var tenMinutesAgo = DateTime.UtcNow.AddMinutes(-10);
+
+            // 2. Tìm tất cả đơn hàng có trạng thái "Pending Payment" và được tạo trước mốc thời gian trên
+            //    Sử dụng Include để lấy thông tin các món hàng (OrderItems) cần thiết cho việc hoàn kho
+            var ordersToCancel = await _context.Orders
+                .Include(o => o.OrderItems)
+                .Where(o => o.Status == "Pending Payment" && o.OrderDate <= tenMinutesAgo)
+                .ToListAsync();
+
+            if (!ordersToCancel.Any())
+            {
+                return; // Không có đơn hàng nào cần hủy, kết thúc sớm
+            }
+
+            // 3. Hoàn trả lại số lượng tồn kho
+            var allItemIds = ordersToCancel.SelectMany(o => o.OrderItems.Select(oi => oi.ItemId)).Distinct().ToList();
+            var menuItemsToUpdate = await _context.MenuItems
+                                                  .Where(mi => allItemIds.Contains(mi.ItemId))
+                                                  .ToDictionaryAsync(mi => mi.ItemId);
+
+            foreach (var order in ordersToCancel)
+            {
+                // 4. Cập nhật trạng thái và lý do hủy cho từng đơn hàng
+                order.Status = "Cancelled";
+                order.RejectionReason = "Tự động hủy do không thanh toán sau 10 phút.";
+
+                foreach (var orderItem in order.OrderItems)
+                {
+                    if (menuItemsToUpdate.TryGetValue(orderItem.ItemId, out var menuItem))
+                    {
+                        menuItem.InventoryQuantity += orderItem.Quantity;
+                    }
+                }
+            }
+
+            // 5. Lưu tất cả các thay đổi vào cơ sở dữ liệu một lần
+            await _context.SaveChangesAsync();
+        }
     }
 }

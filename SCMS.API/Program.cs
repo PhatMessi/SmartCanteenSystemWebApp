@@ -13,6 +13,7 @@ using Microsoft.OpenApi.Models;
 using SCMS.API.Middleware;
 using Serilog;
 using SCMS.Infrastructure.Services;
+using SCMS.Application.BackgroundServices;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Host.UseSerilog((context, configuration) =>
@@ -65,6 +66,7 @@ builder.Services.AddScoped<ReportService>();
 builder.Services.AddScoped<IWalletService, WalletService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<NotificationService>();
+builder.Services.AddHostedService<PendingOrderCancellationService>();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
