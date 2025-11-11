@@ -9,6 +9,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
     - uses: actions/checkout@v4
@@ -18,10 +20,6 @@ jobs:
         docker run \
         -v ${{ github.workspace }}:/srv/jekyll -v ${{ github.workspace }}/_site:/srv/jekyll/_site \
         jekyll/builder:latest /bin/bash -c "chmod -R 777 /srv/jekyll && jekyll build --future"
-
-    # --- BƯỚC MỚI THÊM VÀO ---
-    # Bước này lấy nội dung trong thư mục '_site' và đẩy nó 
-    # sang nhánh 'gh-pages' để GitHub Pages có thể đọc được.
     - name: Deploy to GitHub Pages
       if: github.ref == 'refs/heads/master' # Chỉ deploy khi push lên nhánh master
       uses: peaceiris/actions-gh-pages@v3
