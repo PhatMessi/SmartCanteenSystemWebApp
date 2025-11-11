@@ -1,0 +1,177 @@
+﻿@page "/admin/orders"
+@attribute [Authorize(Roles = "CanteenStaff, CanteenManager, SystemAdmin")]
+
+@inject OrderService OrderService
+@inject ToastService ToastService
+@inject ConfirmDialogService DialogService
+
+<h3>Quản lý Đơn hàng</h3>
+
+<RejectOrderDialog @ref="rejectDialog" OnConfirm="HandleRejectConfirm" />
+
+@if (orders == null)
+{
+    <p><em>Đang tải danh sách đơn hàng...</em></p>
+}
+else if (!orders.Any())
+{
+    <p><em>Hiện không có đơn hàng nào cần xử lý.</em></p>
+}
+else
+{
+    <div class="accordion" id="ordersAccordion">
+        @foreach (var order in orders.OrderBy(o => o.OrderDate))
+        {
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="heading-@order.OrderId">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-@order.OrderId">
+                        <div class="flex-grow-1">
+                            Đơn hàng #@order.OrderId - @order.OrderDate.ToLocalTime().ToString("HH:mm dd/MM/yyyy")
+                            @if (order.PickupTime.HasValue)
+                            {
+                                <strong class="text-danger ms-2">
+                                    (Nhận lúc: @order.PickupTime.Value.ToLocalTime().ToString("HH:mm"))
+                                </strong>
+                            }
+                        </div>
+
+                        <span class="badge @GetStatusBadgeClass(order.Status) me-4">@order.Status</span>
+                    </button>
+                </h2>
+                <div id="collapse-@order.OrderId" class="accordion-collapse collapse" data-bs-parent="#ordersAccordion">
+                    <div class="accordion-body">
+                        <h5>Chi tiết món ăn:</h5>
+                        <ul>
+                            @foreach (var item in order.OrderItems)
+                            {
+                                <li>@item.Quantity x @item.MenuItem.Name - @(item.MenuItem.Price.ToString("N0")) VNĐ</li>
+                            }
+                        </ul>
+                        <hr />
+                        <p><strong>Tổng tiền: @order.TotalPrice.ToString("N0") VNĐ</strong></p>
+                        <p><strong>Người đặt: @order.User.FullName</strong></p>
+                        <div class="mt-3 d-flex justify-content-end gap-2">
+                            @if (order.Status == "Paid")
+                            {
+                                <button class="btn btn-success" @onclick="() => ProgressOrder(order)">
+                                    <i class="oi oi-check"></i> Nhận đơn
+                                </button>
+                                <button class="btn btn-danger" @onclick="() => ShowRejectDialog(order)">
+                                    <i class="oi oi-x"></i> Từ chối
+                                </button>
+                            }
+                            else if (order.Status == "Preparing")
+                            {
+                                <button class="btn btn-primary" @onclick="() => ProgressOrder(order)">
+                                    <i class="oi oi-thumb-up"></i> Báo sẵn sàng
+                                </button>
+                            }
+                            else if (order.Status == "Ready for Pickup")
+                            {
+                                <button class="btn btn-info" @onclick="() => ProgressOrder(order)">
+                                    <i class="oi oi-task"></i> Hoàn thành
+                                </button>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<Order>? orders;
+    private bool _hasLoadedData = false;
+    private RejectOrderDialog rejectDialog;
+    private Order? orderToProcess;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_hasLoadedData)
+        {
+            _hasLoadedData = true;
+            await LoadOrders();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadOrders()
+    {
+        try
+        {
+            orders = await OrderService.GetProcessableOrdersAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading processable orders: {ex.Message}");
+            ToastService.ShowToast("Lỗi khi tải đơn hàng.", ToastLevel.Danger);
+        }
+    }
+
+    private async Task ProgressOrder(Order order)
+    {
+        string message = $"Bạn có chắc chắn muốn nhận và chuẩn bị\nĐơn hàng #{order.OrderId}?";
+        if (order.Status == "Preparing") message = $"Bạn có chắc chắn muốn báo Đơn hàng #{order.OrderId} đã sẵn sàng?";
+        if (order.Status == "Ready for Pickup") message = $"Bạn có chắc chắn muốn hoàn thành Đơn hàng #{order.OrderId}?";
+
+        bool confirmed = await DialogService.Show("Xác nhận", message);
+        if (!confirmed) return;
+        var result = await OrderService.ProgressOrderAsync(order.OrderId);
+        ToastService.ShowToast(result.Message, result.Success ? ToastLevel.Success : ToastLevel.Danger);
+
+        if (result.Success && result.Order != null)
+        {
+            var index = orders.FindIndex(o => o.OrderId == order.OrderId);
+            if (index != -1)
+            {
+                // Nếu đơn hàng hoàn thành hoặc bị hủy thì xóa khỏi danh sách
+                if (result.Order.Status == "Completed" || result.Order.Status == "Cancelled")
+                {
+                    orders.RemoveAt(index);
+                }
+                else // Ngược lại thì cập nhật
+                {
+                    orders[index] = result.Order;
+                }
+            }
+            StateHasChanged();
+        }
+    }
+
+    private void ShowRejectDialog(Order order)
+    {
+        orderToProcess = order;
+        rejectDialog.Show();
+    }
+
+    private async Task HandleRejectConfirm(string reason)
+    {
+        if (orderToProcess == null) return;
+
+        var result = await OrderService.RejectOrderAsync(orderToProcess.OrderId, reason);
+        ToastService.ShowToast(result.Message, result.Success ? ToastLevel.Success : ToastLevel.Danger);
+
+        if (result.Success)
+        {
+            var index = orders.FindIndex(o => o.OrderId == orderToProcess.OrderId);
+            if (index != -1)
+            {
+                orders.RemoveAt(index);
+            }
+            StateHasChanged();
+        }
+        orderToProcess = null; // Reset
+    }
+
+    private string GetStatusBadgeClass(string status)
+    {
+        return status switch
+        {
+            "Paid" => "bg-info text-dark",
+            "Preparing" => "bg-primary",
+            "Ready for Pickup" => "bg-success",
+            _ => "bg-secondary"
+        };
+    }
+}

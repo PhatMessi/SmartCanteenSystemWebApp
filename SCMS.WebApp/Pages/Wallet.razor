@@ -1,0 +1,156 @@
+﻿@page "/wallet"
+@attribute [Authorize]
+
+@inject SCMS.WebApp.Services.WalletService WebWalletService
+
+<PageTitle>Ví điện tử</PageTitle>
+
+<h3>Ví và Lịch sử Giao dịch</h3>
+
+<div class="card mb-4">
+    <div class="card-header">Thông tin Ví</div>
+    <div class="card-body">
+        @if (wallet == null)
+        {
+            <p><em>Đang tải...</em></p>
+        }
+        else
+        {
+            <h4>Số dư hiện tại: <span class="text-success">@wallet.Balance.ToString("N0") VND</span></h4>
+            <hr />
+            <h5>Nạp tiền vào ví</h5>
+            <div class="input-group" style="max-width: 400px;">
+                <InputNumber @bind-Value="topUpAmount" class="form-control" placeholder="Nhập số tiền" TValue="decimal" />
+                <button class="btn btn-primary" @onclick="HandleTopUp" disabled="@isSubmitting">
+                    @if(isSubmitting) { <span class="spinner-border spinner-border-sm"></span> }
+                    Nạp tiền
+                </button>
+            </div>
+            @if (!string.IsNullOrEmpty(topUpMessage))
+            {
+                <div class="alert @(topUpSuccess ? "alert-success" : "alert-danger") mt-2">@topUpMessage</div>
+            }
+        }
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">Lịch sử Giao dịch</div>
+    <div class="card-body">
+        @if (transactions == null)
+        {
+            <p><em>Đang tải lịch sử...</em></p>
+        }
+        else if (!transactions.Any())
+        {
+            <p>Chưa có giao dịch nào.</p>
+        }
+        else
+        {
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Ngày</th>
+                        <th>Loại Giao dịch</th>
+                        <th>Số tiền</th>
+                        <th>Mô tả</th>
+                        <th>Trạng thái</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var tx in transactions)
+                    {
+                        <tr>
+                            <td>@tx.TransactionDate.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>@GetTransactionTypeDisplayName(tx.Type)</td>
+                            <td class="@GetAmountClass(tx.Type)">
+                                @(GetSign(tx.Type)) @tx.Amount.ToString("N0") VND
+                            </td>
+                            <td>@tx.Description</td>
+                            <td><span class="badge @GetStatusClass(tx.Status)">@tx.Status</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+</div>
+
+@code {
+    private WalletDto? wallet;
+    private List<TransactionDetailsDto>? transactions;
+    private decimal topUpAmount;
+    private bool isSubmitting = false;
+    private string? topUpMessage;
+    private bool topUpSuccess = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        var walletTask = WebWalletService.GetWalletAsync();
+        var historyTask = WebWalletService.GetTransactionHistoryAsync();
+        await Task.WhenAll(walletTask, historyTask);
+        wallet = walletTask.Result;
+        transactions = historyTask.Result;
+    }
+
+    private async Task HandleTopUp()
+    {
+        if (topUpAmount <= 10000)
+        {
+            topUpMessage = "Số tiền phải lớn hơn 10000.";
+            topUpSuccess = false;
+            return;
+        }
+
+        isSubmitting = true;
+        var request = new TopUpRequestDto { Amount = topUpAmount };
+        var result = await WebWalletService.TopUpAsync(request);
+
+        topUpSuccess = result.Success;
+        topUpMessage = result.Message;
+        
+        if (topUpSuccess)
+        {
+            topUpAmount = 0;
+            await LoadData(); 
+        }
+        isSubmitting = false;
+    }
+
+    // Các hàm trợ giúp để hiển thị UI đẹp hơn
+    private string GetTransactionTypeDisplayName(string type) => type switch
+    {
+        "Payment" => "Thanh toán",
+        "TopUp" => "Nạp tiền",
+        "Refund" => "Hoàn tiền",
+        "Withdrawal" => "Rút tiền",
+        _ => type
+    };
+
+    private string GetAmountClass(string type) => type switch
+    {
+        "Payment" or "Withdrawal" => "text-danger",
+        "TopUp" or "Refund" => "text-success",
+        _ => ""
+    };
+
+    private string GetSign(string type) => type switch
+    {
+        "Payment" or "Withdrawal" => "-",
+        "TopUp" or "Refund" => "+",
+        _ => ""
+    };
+    
+    private string GetStatusClass(string status) => status switch
+    {
+        "Success" => "bg-success",
+        "Failed" => "bg-danger",
+        "Pending" => "bg-warning",
+        _ => "bg-secondary"
+    };
+}

@@ -1,0 +1,278 @@
+﻿@page "/admin/users"
+@attribute [Authorize(Roles = "SystemAdmin")]
+
+@inject UserService UserService
+@inject ToastService ToastService
+
+@if (isDeleteConfirmModalVisible)
+{
+    <div class="modal-backdrop show"></div>
+    <div class="modal show" tabindex="-1" style="display: block;">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Xác nhận Xóa</h5>
+                    <button type="button" class="btn-close" @onclick="HideDeleteConfirm"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Bạn có thật sự muốn xóa người dùng <strong>"@userToDelete?.FullName"</strong> không? Hành động này không thể hoàn tác.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="HideDeleteConfirm">Hủy</button>
+                    <button type="button" class="btn btn-danger" @onclick="ConfirmDeleteAsync">Xác nhận Xóa</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+
+<h3>Quản lý Người dùng</h3>
+
+<button class="btn btn-primary mb-3" @onclick="ShowCreateModal">
+    <span class="oi oi-plus"></span> Thêm người dùng mới
+</button>
+
+@if (users == null || rolesList == null)
+{
+    <p><em>Đang tải danh sách...</em></p>
+}
+else
+{
+    <table class="table table-striped table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th>Họ tên</th>
+                <th>Email</th>
+                <th>Vai trò</th>
+                <th style="width: 150px;">Hành động</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var user in users)
+            {
+                <tr>
+                    <td>@user.FullName</td>
+                    <td>@user.Email</td>
+                    <td>@user.Role?.RoleName</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" @onclick="() => ShowEditModal(user)">
+                            <span class="oi oi-pencil"></span> Sửa
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" @onclick="() => ShowDeleteConfirm(user)">
+                            <span class="oi oi-trash"></span> Xóa
+                        </button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (isCreateModalVisible)
+{
+    <div class="modal fade show" style="display:block" role="dialog">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <EditForm Model="newUser" OnValidSubmit="HandleCreateUser">
+                    <DataAnnotationsValidator />
+                    <div class="modal-header">
+                        <h5 class="modal-title">Tạo người dùng mới</h5>
+                        <button type="button" class="close" @onclick="CloseModals">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <ValidationSummary />
+                        <div class="mb-3">
+                            <label class="form-label">Họ và tên:</label>
+                            <InputText class="form-control" @bind-Value="newUser.FullName" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email:</label>
+                            <InputText type="email" class="form-control" @bind-Value="newUser.Email" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Vai trò:</label>
+                            <InputSelect class="form-control" @bind-Value="newUser.RoleId">
+                                <option value="0" disabled>-- Chọn vai trò --</option>
+                                @if (rolesList != null)
+                                {
+                                    @foreach (var role in rolesList)
+                                    {
+                                        <option value="@role.RoleId">@role.RoleName</option>
+                                    }
+                                }
+                            </InputSelect>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseModals">Hủy</button>
+                        <button type="submit" class="btn btn-primary">Tạo người dùng</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@if (isEditModalVisible)
+{
+    <div class="modal fade show" style="display:block" role="dialog">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <EditForm Model="updateUserDto" OnValidSubmit="HandleUpdateUser">
+                    <DataAnnotationsValidator />
+                    <div class="modal-header">
+                        <h5 class="modal-title">Chỉnh sửa người dùng</h5>
+                        <button type="button" class="close" @onclick="CloseModals">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <ValidationSummary />
+                        <div class="mb-3">
+                            <label class="form-label">Họ và tên:</label>
+                            <InputText class="form-control" @bind-Value="updateUserDto.FullName" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email:</label>
+                            <InputText type="email" class="form-control" @bind-Value="updateUserDto.Email" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Vai trò:</label>
+                            <InputSelect class="form-control" @bind-Value="updateUserDto.RoleId">
+                                @if (rolesList != null)
+                                {
+                                    @foreach (var role in rolesList)
+                                    {
+                                        <option value="@role.RoleId">@role.RoleName</option>
+                                    }
+                                }
+                            </InputSelect>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseModals">Hủy</button>
+                        <button type="submit" class="btn btn-success">Lưu thay đổi</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+
+@code {
+    private List<User>? users;
+    // --- THAY ĐỔI 2: Thêm biến lưu danh sách vai trò ---
+    private List<Role>? rolesList;
+
+    private bool isCreateModalVisible = false;
+    private CreateUserDto newUser = new();
+    private bool isEditModalVisible = false;
+    private UpdateUserDto updateUserDto = new();
+    private int userToEditId;
+    private bool isDeleteConfirmModalVisible = false;
+    private User? userToDelete;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // --- THAY ĐỔI 3: Tải cả user và role khi khởi tạo trang ---
+        await Task.WhenAll(LoadUsers(), LoadRoles());
+    }
+
+    private async Task LoadUsers()
+    {
+        users = await UserService.GetAllUsersAsync();
+    }
+
+    // --- THAY ĐỔI 4: Thêm phương thức tải vai trò ---
+    private async Task LoadRoles()
+    {
+        rolesList = await UserService.GetAllRolesAsync();
+    }
+
+    private void ShowCreateModal()
+    {
+        newUser = new CreateUserDto { RoleId = 1 };
+        isCreateModalVisible = true;
+    }
+
+    private async Task HandleCreateUser()
+    {
+        var result = await UserService.CreateUserAsync(newUser);
+        if (result != null)
+        {
+            ToastService.ShowToast("Tạo người dùng thành công! Mật khẩu đã được gửi qua email.");
+            CloseModals();
+            await LoadUsers();
+        }
+        else
+        {
+            ToastService.ShowToast("Tạo người dùng thất bại. Email có thể đã tồn tại.", ToastLevel.Danger);
+        }
+    }
+
+    private void ShowEditModal(User userToEdit)
+    {
+        userToEditId = userToEdit.UserId;
+        updateUserDto = new UpdateUserDto
+        {
+            FullName = userToEdit.FullName,
+            Email = userToEdit.Email,
+            RoleId = userToEdit.RoleId,
+            ParentEmail = userToEdit.Parent?.Email
+        };
+        isEditModalVisible = true;
+    }
+
+    private async Task HandleUpdateUser()
+    {
+        var success = await UserService.UpdateUserAsync(userToEditId, updateUserDto);
+        if (success)
+        {
+            ToastService.ShowToast("Cập nhật thành công!");
+            CloseModals();
+            await LoadUsers();
+        }
+        else
+        {
+            ToastService.ShowToast("Cập nhật thất bại.", ToastLevel.Danger);
+        }
+    }
+
+    private void ShowDeleteConfirm(User user)
+    {
+        userToDelete = user;
+        isDeleteConfirmModalVisible = true;
+    }
+
+    private void HideDeleteConfirm()
+    {
+        isDeleteConfirmModalVisible = false;
+        userToDelete = null;
+    }
+
+    private async Task ConfirmDeleteAsync()
+    {
+        if (userToDelete != null)
+        {
+            var success = await UserService.DeleteUserAsync(userToDelete.UserId);
+            if (success)
+            {
+                ToastService.ShowToast("Xóa người dùng thành công!");
+                users?.Remove(userToDelete);
+            }
+            else
+            {
+                ToastService.ShowToast("Xóa thất bại.", ToastLevel.Danger);
+            }
+        }
+        HideDeleteConfirm();
+    }
+
+    private void CloseModals()
+    {
+        isCreateModalVisible = false;
+        isEditModalVisible = false;
+    }
+}

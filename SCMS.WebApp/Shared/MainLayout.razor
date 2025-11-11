@@ -1,0 +1,145 @@
+﻿@inherits LayoutComponentBase
+@inject CartService CartService
+@inject ToastService ToastService
+@implements IDisposable
+@inject NotificationService NotificationService
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        @* BIẾN TOP-ROW THÀNH MỘT THANH HEADER HOÀN CHỈNH *@
+        <nav class="navbar navbar-light bg-light px-4 shadow-sm">
+            <div class="container-fluid">
+                <div class="d-flex align-items-center">
+                    @* GIỎ HÀNG *@
+                    <a href="/cart" class="nav-link me-3">
+                        @* Thêm me-3 để tạo khoảng cách *@
+                        <span class="oi oi-cart" style="font-size: 1.5rem; color: var(--primary-color);"></span>
+                        @if (CartService.Items.Any())
+                        {
+                            <span class="badge bg-danger rounded-pill" style="position: relative; top: -12px; left: -10px;">
+                                @CartService.Items.Count
+                            </span>
+                        }
+                    </a>
+
+                    @* ICON THÔNG BÁO (THÊM MỚI) *@
+                    <AuthorizeView>
+                        @* Chỉ hiển thị khi đã đăng nhập *@
+                        <Authorized>
+                            <a href="/notifications" class="nav-link">
+                                <span class="oi oi-bell" style="font-size: 1.5rem; color: var(--primary-color);"></span>
+                                @if (NotificationService.UnreadCount > 0)
+                                {
+                                    <span class="badge bg-danger rounded-pill" style="position: relative; top: -12px; left: -10px;">
+                                        @NotificationService.UnreadCount
+                                    </span>
+                                }
+                            </a>
+                        </Authorized>
+                    </AuthorizeView>
+                </div>
+
+                @* KHỐI ĐĂNG NHẬP SẼ BỊ ĐẨY SANG BÊN PHẢI VỚI ms-auto *@
+                <div class="ms-auto d-flex align-items-center">
+                    <AuthorizeView>
+                        <Authorized>
+                            <a class="navbar-text me-3" href="/profile">Xin chào, @context.User.Identity?.Name!</a>
+                            <a class="btn btn-outline-danger btn-sm" href="/logout">Đăng xuất</a>
+                        </Authorized>
+                        <NotAuthorized>
+                            <a class="btn btn-primary btn-sm" href="/login">Đăng nhập</a>
+                        </NotAuthorized>
+                    </AuthorizeView>
+                </div>
+            </div>
+        </nav>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+
+@* Phần Toast Notification giữ nguyên không đổi *@
+@if (toastVisible)
+{
+    <div class="toast show @toastCssClass" style="position: fixed; top: 1rem; right: 1rem; z-index: 1050;">
+        <div class="toast-header">
+            <strong class="me-auto">Thông báo</strong>
+            <button type="button" class="btn-close" @onclick="HideToast"></button>
+        </div>
+        <div class="toast-body">
+            @toastMessage
+        </div>
+    </div>
+}
+<ConfirmDialog />
+
+@code {
+    private string? toastMessage;
+    private string? toastCssClass;
+    private bool toastVisible = false;
+    private int unreadNotificationCount = 0;
+    private Action _notificationCountOnChange;
+    private Action _cartServiceOnChange; // Biến để lưu trữ action
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Gán lambda có InvokeAsync vào biến
+            _cartServiceOnChange = () => InvokeAsync(StateHasChanged);
+            // Đăng ký sự kiện bằng biến đó
+            CartService.OnChange += _cartServiceOnChange;
+            ToastService.OnShow += ShowToast;
+
+            _notificationCountOnChange = () => InvokeAsync(StateHasChanged);
+            NotificationService.OnCountChanged += _notificationCountOnChange;
+
+            // Lấy số lượng thông báo ban đầu
+            await NotificationService.GetInitialUnreadCountAsync();
+        }
+    }
+
+    public void Dispose()
+    {
+        // Hủy đăng ký sự kiện bằng biến đó để đảm bảo chính xác
+        CartService.OnChange -= _cartServiceOnChange;
+        ToastService.OnShow -= ShowToast;
+        NotificationService.OnCountChanged -= _notificationCountOnChange;
+    }
+
+    // ===== BẮT ĐẦU SỬA LỖI LUỒNG (THREADING) =====
+    private void ShowToast(string message, ToastLevel level)
+    {
+        // Phải dùng InvokeAsync vì sự kiện OnShow có thể được gọi từ một luồng khác
+        InvokeAsync(async () =>
+        {
+            toastMessage = message;
+            toastCssClass = $"bg-{level.ToString().ToLower()} text-white";
+            toastVisible = true;
+            StateHasChanged(); // Báo cho Blazor biết giao diện cần được vẽ lại
+
+            // Dùng Task.Delay thay vì Timer để tránh lỗi luồng
+            await Task.Delay(3000);
+
+            // Chỉ ẩn toast nếu nó vẫn đang hiển thị
+            if (toastVisible)
+            {
+                HideToast();
+            }
+        });
+    }
+
+    private void HideToast()
+    {
+        toastVisible = false;
+        StateHasChanged();
+    }
+    // ===== KẾT THÚC SỬA LỖI LUỒNG (THREADING) =====
+
+}

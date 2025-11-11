@@ -1,0 +1,72 @@
+﻿@page "/reports/sales"
+@attribute [Authorize(Roles = "CanteenManager, SystemAdmin")]
+
+@inject ReportService ReportService
+
+<h3>Báo cáo Doanh thu</h3>
+
+<div class="row g-3 align-items-end bg-light p-3 rounded mb-4">
+    <div class="col-md-4">
+        <label class="form-label">Từ ngày</label>
+        <InputDate class="form-control" @bind-Value="startDate" />
+    </div>
+    <div class="col-md-4">
+        <label class="form-label">Đến ngày</label>
+        <InputDate class="form-control" @bind-Value="endDate" />
+    </div>
+    <div class="col-md-2">
+        <button class="btn btn-primary w-100" @onclick="GenerateReport">Xem báo cáo</button>
+    </div>
+</div>
+
+@if (summary != null)
+{
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <div class="card text-white bg-success h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Tổng Doanh thu</h5>
+                    <p class="card-text fs-4 fw-bold">@summary.TotalRevenue.ToString("N0") VNĐ</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-3">
+            <div class="card text-white bg-info h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Tổng số đơn hàng</h5>
+                    <p class="card-text fs-4 fw-bold">@summary.TotalOrders</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h4>Top 5 Món ăn bán chạy nhất</h4>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Tên món ăn</th>
+                <th>Tổng số lượng đã bán</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in summary.TopItems)
+            {
+                <tr>
+                    <td>@item.ItemName</td>
+                    <td>@item.TotalQuantity</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private DateTime startDate = DateTime.Now.AddDays(-7);
+    private DateTime endDate = DateTime.Now;
+    private SalesSummaryDto? summary;
+
+    private async Task GenerateReport()
+    {
+        summary = await ReportService.GetSalesSummaryAsync(startDate, endDate);
+    }
+}

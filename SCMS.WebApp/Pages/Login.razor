@@ -1,0 +1,92 @@
+﻿@page "/login"
+@inject AuthService AuthService
+@inject NavigationManager NavigationManager
+
+<PageTitle>Đăng nhập - Smart Canteen</PageTitle>
+
+<div class="login-container">
+    <div class="login-card">
+        <div class="text-center mb-4">
+            <span class="oi oi-restaurant" style="font-size: 2.5rem; color: var(--primary-color);"></span>
+            <h3 class="mt-2">Đăng nhập Smart Canteen</h3>
+            <p class="text-muted">Chào mừng bạn quay trở lại!</p>
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger">@errorMessage</div>
+        }
+
+        <EditForm Model="loginDto" OnValidSubmit="HandleLogin">
+            <DataAnnotationsValidator />
+
+            <div class="input-group mb-3">
+                <span class="input-group-text"><i class="bi bi-envelope-fill"></i></span>
+                <InputText @bind-Value="loginDto.Email" class="form-control" placeholder="Email" />
+            </div>
+            <ValidationMessage For="@(() => loginDto.Email)" />
+
+            <div class="input-group mb-3">
+                <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+                <InputText @bind-Value="loginDto.Password" type="password" class="form-control" placeholder="Mật khẩu" />
+            </div>
+            <ValidationMessage For="@(() => loginDto.Password)" />
+
+            <div class="d-flex justify-content-end mb-4">
+                <a href="/forgot-password">Quên mật khẩu?</a>
+            </div>
+            <button disabled="@isSubmitting" type="submit" class="btn btn-primary w-100 py-2">
+                @if (isSubmitting)
+                {
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    <span> Đang xử lý...</span>
+                }
+                else
+                {
+                    <span>Đăng nhập</span>
+                }
+            </button>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private LoginDto loginDto = new();
+    private string? errorMessage;
+    private bool isSubmitting = false;
+
+    private async Task HandleLogin()
+    {
+        errorMessage = null;
+        isSubmitting = true;
+
+        try
+        {
+            // === THAY ĐỔI START ===
+            // AuthService.LoginAsync giờ sẽ trả về một đối tượng kết quả
+            var result = await AuthService.LoginAsync(loginDto);
+
+            if (result.Success)
+            {
+                // Nếu API báo cần đổi mật khẩu, điều hướng đến trang mới
+                if (result.MustChangePassword)
+                {
+                    NavigationManager.NavigateTo("/force-change-password");
+                }
+                else // Nếu không, điều hướng đến trang chủ như bình thường
+                {
+                    NavigationManager.NavigateTo("/", forceLoad: true);
+                }
+            }
+            // === THAY ĐỔI END ===
+            else
+            {
+                errorMessage = "Email hoặc mật khẩu không hợp lệ.";
+            }
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}

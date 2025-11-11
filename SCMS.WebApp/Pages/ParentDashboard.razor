@@ -1,0 +1,222 @@
+﻿@page "/parent-dashboard"
+@attribute [Authorize(Roles = "Parent")]
+
+@inject SCMS.WebApp.Services.UserService WebUserService
+@inject SCMS.WebApp.Services.WalletService WebWalletService
+@inject SCMS.WebApp.Services.ToastService ToastService
+@using SCMS.WebApp.Services
+
+<PageTitle>Bảng điều khiển Phụ huynh</PageTitle>
+
+<h3>Các tài khoản học sinh đã liên kết</h3>
+
+@* ... Phần HTML của component giữ nguyên, không thay đổi ... *@
+@if (linkedStudents == null)
+{
+    <p><em>Đang tải danh sách...</em></p>
+}
+else if (!linkedStudents.Any())
+{
+    <div class="alert alert-info">
+        Bạn chưa liên kết với tài khoản học sinh nào.
+    </div>
+}
+else
+{
+    <div class="list-group">
+        @foreach (var student in linkedStudents)
+        {
+            <div class="list-group-item list-group-item-action flex-column align-items-start">
+                <div class="d-flex w-100 justify-content-between">
+                    <h5 class="mb-1">@student.FullName</h5>
+                    <small>ID: @student.UserId</small>
+                </div>
+                <p class="mb-1">Email: @student.Email</p>
+
+                <div class="mt-2">
+                    <button class="btn btn-sm btn-outline-success" @onclick="() => OpenTopUpModal(student)">
+                        <i class="oi oi-dollar"></i> Nạp tiền
+                    </button>
+                    <a href="/spending-report" class="btn btn-sm btn-outline-primary">
+                        <i class="oi oi-bar-chart"></i> Báo cáo chi tiêu
+                    </a>
+                    <button class="btn btn-sm btn-outline-info" @onclick="() => OpenHistoryModal(student)">
+                        <i class="oi oi-list-rich"></i> Xem lịch sử giao dịch
+                    </button>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@if (_showTopUpModal)
+{
+    <div class="modal fade show" tabindex="-1" style="display: block;">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Nạp tiền cho: @_selectedStudent.FullName</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="amount" class="form-label">Số tiền cần nạp (VND)</label>
+                        <InputText id="topUpAmount" class="form-control" @bind-Value="_topUpAmountString" />
+                    </div>
+                    @if (!string.IsNullOrEmpty(_errorMessage))
+                    {
+                        <div class="alert alert-danger">@_errorMessage</div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseModal">Hủy</button>
+                    <button type="button" class="btn btn-primary" @onclick="HandleTopUp" disabled="@(_isProcessing || string.IsNullOrWhiteSpace(_topUpAmountString))">
+                        @(_isProcessing ? "Đang xử lý..." : "Xác nhận")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@if (_showHistoryModal)
+{
+    <div class="modal fade show" tabindex="-1" style="display: block;">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Lịch sử giao dịch của: @_selectedStudent.FullName</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    @if (_studentHistory == null)
+                    {
+                        <p><em>Đang tải lịch sử...</em></p>
+                    }
+                    else if (!_studentHistory.Any())
+                    {
+                        <p>Không có giao dịch nào.</p>
+                    }
+                    else
+                    {
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Thời gian</th>
+                                    <th>Loại</th>
+                                    <th>Số tiền</th>
+                                    <th>Mô tả</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var trans in _studentHistory)
+                                {
+                                    <tr class="@(trans.Type == "TopUp" || trans.Type == "Refund" ? "text-success" : "text-danger")">
+                                        <td>@trans.TransactionDate.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                                        <td>@trans.Type</td>
+                                        <td>@trans.Amount.ToString("N0") đ</td>
+                                        <td>@trans.Description</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseModal">Đóng</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+
+@code {
+    private List<User>? linkedStudents;
+
+    // State cho Modals
+    private bool _showTopUpModal = false;
+    private bool _showHistoryModal = false;
+    private bool _isProcessing = false;
+    private string? _errorMessage;
+
+    private User? _selectedStudent;
+    private string _topUpAmountString = "50000";
+    private List<TransactionDetailsDto>? _studentHistory;
+
+    protected override async Task OnInitializedAsync()
+    {
+        linkedStudents = await WebUserService.GetMyStudentsAsync();
+    }
+
+    private void OpenTopUpModal(User student)
+    {
+        _selectedStudent = student;
+        _showTopUpModal = true;
+        _errorMessage = null;
+        _topUpAmountString = "50000";
+    }
+
+    private async Task HandleTopUp()
+    {
+        var cleanAmountString = _topUpAmountString.Replace(".", "").Replace(",", "");
+
+        // 2. Chuyển chuỗi thành số decimal
+        if (!decimal.TryParse(cleanAmountString, out decimal parsedAmount))
+        {
+            _errorMessage = "Số tiền không hợp lệ. Vui lòng chỉ nhập số.";
+            return;
+        }
+
+        // 3. Kiểm tra logic nghiệp vụ (giống DTO)
+        if (parsedAmount < 10000 || parsedAmount > 5000000)
+        {
+            _errorMessage = "Số tiền nạp phải từ 10,000 đến 5,000,000 VND.";
+            return;
+        }
+
+        if (_selectedStudent == null)
+        {
+            _errorMessage = "Lỗi: Không xác định được học sinh.";
+            return;
+        }
+
+        _isProcessing = true;
+        _errorMessage = null;
+        var request = new TopUpRequestDto { Amount = parsedAmount };
+
+        var result = await WebWalletService.TopUpForStudentAsync(_selectedStudent.UserId, request);
+        if (result.Success)
+        {
+            // *** SỬA LỖI TẠI ĐÂY ***
+            // Gọi đúng phương thức ShowToast với chỉ message, vì level đã mặc định là Success
+            ToastService.ShowToast(result.Message);
+            CloseModal();
+        }
+        else
+        {
+            _errorMessage = result.Message;
+        }
+        _isProcessing = false;
+        StateHasChanged();
+    }
+
+    private async Task OpenHistoryModal(User student)
+    {
+        _selectedStudent = student;
+        _studentHistory = null;
+        _showHistoryModal = true;
+        _studentHistory = await WebWalletService.GetStudentTransactionHistoryAsync(student.UserId);
+        StateHasChanged();
+    }
+
+    private void CloseModal()
+    {
+        _showTopUpModal = false;
+        _showHistoryModal = false;
+        _selectedStudent = null;
+        _isProcessing = false;
+    }
+}

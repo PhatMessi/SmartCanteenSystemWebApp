@@ -1,0 +1,69 @@
+﻿@page "/admin/order-history"
+@attribute [Authorize(Roles = "CanteenManager, SystemAdmin")]
+
+@inject SCMS.WebApp.Services.OrderService OrderService
+
+<h3>Lịch sử Tất cả Đơn hàng</h3>
+
+@if (allOrders == null)
+{
+    <p><em>Đang tải lịch sử...</em></p>
+}
+else if (!allOrders.Any())
+{
+    <p><em>Không có đơn hàng nào trong lịch sử.</em></p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Người đặt</th>
+                    <th>Ngày đặt</th>
+                    <th>Tổng tiền</th>
+                    <th>Trạng thái</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var order in allOrders)
+                {
+                    <tr>
+                        <td>@order.OrderId</td>
+                        <td>@order.User?.FullName</td>
+                        <td>@order.OrderDate.ToLocalTime().ToString("HH:mm dd/MM/yyyy")</td>
+                        <td>@order.TotalPrice.ToString("N0") VNĐ</td>
+                        <td>
+                            <span class="badge @GetStatusBadgeClass(order.Status)">@order.Status</span>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private List<Order>? allOrders;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // === ĐẢM BẢO DÒNG NÀY GỌI ĐÚNG GetOrderHistoryAsync ===
+        allOrders = await OrderService.GetOrderHistoryAsync();
+    }
+
+    private string GetStatusBadgeClass(string status)
+    {
+        return status switch
+        {
+            "Pending Payment" => "bg-secondary",
+            "Paid" => "bg-info text-dark",
+            "Preparing" => "bg-primary",
+            "Ready for Pickup" => "bg-dark",
+            "Completed" => "bg-success",
+            "Cancelled" => "bg-danger",
+            _ => "bg-light text-dark"
+        };
+    }
+}

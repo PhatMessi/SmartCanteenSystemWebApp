@@ -1,0 +1,181 @@
+﻿@page "/admin/menu"
+@attribute [Authorize(Roles = "CanteenManager, SystemAdmin")]
+
+@inject SCMS.WebApp.Services.MenuService WebAppMenuService
+@inject NavigationManager NavigationManager
+@inject SCMS.WebApp.Services.ToastService WebAppToastService
+
+@if (isDeleteConfirmModalVisible)
+{
+    <div class="modal-backdrop show"></div>
+    <div class="modal show" tabindex="-1" style="display: block;">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Xác nhận Xóa</h5>
+                    <button type="button" class="btn-close" @onclick="HideDeleteConfirm"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Bạn có thật sự muốn xóa món ăn <strong>"@itemToDelete?.Name"</strong> không? Hành động này không thể hoàn tác.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="HideDeleteConfirm">Hủy</button>
+                    <button type="button" class="btn btn-danger" @onclick="ConfirmDeleteAsync">Xác nhận Xóa</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<h3>Quản lý Thực đơn</h3>
+
+<div class="d-flex justify-content-between mb-3">
+    <button class="btn btn-primary" @onclick="GoToAddPage">Thêm món ăn mới</button>
+</div>
+
+<div class="row mb-3">
+    <div class="col-md-4">
+        <div class="input-group">
+            <select class="form-select" @bind="selectedCategoryId">
+                <option value="0">-- Lọc theo danh mục --</option>
+                @if (categories != null)
+                {
+                    @foreach (var category in categories)
+                    {
+                        <option value="@category.CategoryId">@category.CategoryName</option>
+                    }
+                }
+            </select>
+            <button class="btn btn-outline-secondary" type="button" @onclick="ApplyFilter">Lọc</button>
+            <button class="btn btn-outline-secondary" type="button" @onclick="ClearFilter">Xóa lọc</button>
+        </div>
+    </div>
+</div>
+@if (menuItems == null)
+{
+    <p><em>Đang tải thực đơn...</em></p>
+}
+else
+{
+    <table class="table table-striped table-bordered">
+        <thead class="table-dark">
+            <tr>
+                <th>Tên món ăn</th>
+                <th>Danh mục</th>
+                <th>Giá</th>
+                <th>Tồn kho</th>
+                <th>Trạng thái</th>
+                <th>Hành động</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in menuItems)
+            {
+                <tr>
+                    <td>@item.Name</td>
+                    <td>@item.Category?.CategoryName</td>
+                    <td>@item.Price.ToString("N0") VNĐ</td>
+
+                    <td>
+                        @if (item.IsAvailable)
+                        {
+                            <span>@item.InventoryQuantity</span>
+                        }
+                        else
+                        {
+                            <span class="text-danger">Ngừng bán</span>
+                        }
+                    </td>
+                    <td>
+                        <span class="badge @(item.IsAvailable ? "bg-success" : "bg-danger")">
+                            @(item.IsAvailable ? "Đang bán" : "Ngừng bán")
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" @onclick="() => GoToEditPage(item.ItemId)"><span class="oi oi-pencil"></span>Sửa</button>
+                        <button class="btn btn-sm btn-outline-danger" @onclick="() => ShowDeleteConfirm(item)"><span class="oi oi-trash"></span>Xóa</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+
+@code {
+    private List<MenuItem>? menuItems;
+    private bool isDeleteConfirmModalVisible = false;
+    private MenuItem? itemToDelete;
+
+    // --- BẮT ĐẦU THAY ĐỔI: Thêm biến cho danh mục và bộ lọc ---
+    private List<SCMS.Domain.Category>? categories;
+    private int selectedCategoryId = 0;
+    // --- KẾT THÚC THAY ĐỔI ---
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Tải đồng thời danh sách món ăn và danh mục để tối ưu tốc độ
+        var menuItemsTask = WebAppMenuService.GetMenuItemsAsync(null, null);
+        var categoriesTask = WebAppMenuService.GetCategoriesAsync(); // Giả định có hàm này trong WebAppMenuService
+
+        await Task.WhenAll(menuItemsTask, categoriesTask);
+
+        menuItems = await menuItemsTask;
+        categories = await categoriesTask;
+    }
+
+    // --- BẮT ĐẦU THAY ĐỔI: Thêm hàm lọc và xóa lọc ---
+    private async Task ApplyFilter()
+    {
+        // Gọi API để lấy danh sách món ăn đã được lọc
+        var categoryIdToFilter = selectedCategoryId == 0 ? (int?)null : selectedCategoryId;
+        menuItems = await WebAppMenuService.GetMenuItemsAsync(null, categoryIdToFilter);
+    }
+
+    private async Task ClearFilter()
+    {
+        selectedCategoryId = 0;
+        menuItems = await WebAppMenuService.GetMenuItemsAsync(null, null); // Tải lại toàn bộ
+    }
+    // --- KẾT THÚC THAY ĐỔI ---
+
+    private void GoToAddPage()
+    {
+        NavigationManager.NavigateTo("/admin/menu/add");
+    }
+
+    private void GoToEditPage(int itemId)
+    {
+        NavigationManager.NavigateTo($"/admin/menu/edit/{itemId}");
+    }
+
+    private void ShowDeleteConfirm(MenuItem item)
+    {
+        itemToDelete = item;
+        isDeleteConfirmModalVisible = true;
+    }
+
+    private void HideDeleteConfirm()
+    {
+        isDeleteConfirmModalVisible = false;
+        itemToDelete = null;
+    }
+
+    private async Task ConfirmDeleteAsync()
+    {
+        if (itemToDelete != null)
+        {
+            var success = await WebAppMenuService.DeleteMenuItemAsync(itemToDelete.ItemId);
+            if (success)
+            {
+                WebAppToastService.ShowToast("Xóa món ăn thành công!");
+                menuItems?.Remove(itemToDelete);
+            }
+            else
+            {
+                WebAppToastService.ShowToast("Xóa món ăn thất bại.", ToastLevel.Danger);
+            }
+            HideDeleteConfirm();
+        }
+    }
+}

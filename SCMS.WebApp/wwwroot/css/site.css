@@ -1,0 +1,110 @@
+﻿@import url('open-iconic/font/css/open-iconic-bootstrap.min.css');
+
+:root {
+    --primary-color: #F7941E; /* FPT Orange */
+    --secondary-color: #00A859; /* FPT Green */
+    --sidebar-bg: #2c3e50; /* Dark Blue/Gray */
+    --sidebar-text: rgba(255, 255, 255, 0.8);
+    --sidebar-text-hover: #ffffff;
+}
+
+html, body {
+    font-family: 'Nunito', sans-serif;
+}
+
+.btn-primary {
+    color: #fff;
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+    .btn-primary:hover {
+        opacity: 0.9;
+        border-color: var(--primary-color);
+    }
+
+.sidebar {
+    background-image: linear-gradient(180deg, var(--sidebar-bg) 0%, #1a2531 70%);
+}
+
+    .sidebar .nav-link {
+        color: var(--sidebar-text);
+    }
+
+        .sidebar .nav-link:hover,
+        .sidebar .nav-link.active {
+            color: var(--sidebar-text-hover);
+        }
+
+        .sidebar .nav-link .oi {
+            color: var(--sidebar-text);
+        }
+
+        .sidebar .nav-link:hover .oi,
+        .sidebar .nav-link.active .oi {
+            color: var(--primary-color); /* Highlight icon màu cam khi active/hover */
+        }
+main {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1; /* Quan trọng: Cho phép <main> chiếm hết không gian còn lại */
+}
+
+.content {
+    flex-grow: 1; /* Quan trọng: Cho phép <article class="content"> chiếm hết không gian trong <main> */
+}
+
+/* ===== Trang chủ Hero Banner ===== */
+.hero-section {
+    position: relative;
+    height: 75vh; /* Chiều cao chiếm 75% màn hình */
+    background-image: url('../images/cang-tin.jpg'); /* Đường dẫn tới ảnh của bạn */
+    background-size: cover;
+    background-position: center;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.hero-content {
+    text-align: center;
+    background-color: rgba(0, 0, 0, 0.5); /* Lớp phủ màu đen mờ để chữ dễ đọc */
+    padding: 2rem 3rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+.hero-content h1 {
+    font-weight: 700; /* Chữ đậm hơn */
+}
+
+.hero-content .lead {
+    font-size: 1.25rem;
+    font-weight: 400;
+}
+
+/* ===== Trang Đăng nhập ===== */
+.login-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh; /* SỬA ĐỔI: Đảm bảo container chiếm toàn bộ chiều cao màn hình */
+    background-color: #f8f9fa;
+}
+
+.login-card {
+    width: 100%;
+    max-width: 420px;
+    padding: 2.5rem;
+    background-color: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e9ecef;
+}
+
+.login-card .input-group-text {
+    background-color: #e9ecef;
+    border: 1px solid #ced4da;
+}

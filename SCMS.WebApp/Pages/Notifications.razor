@@ -1,0 +1,78 @@
+﻿@page "/notifications"
+@attribute [Authorize]
+@using SCMS.Domain
+
+@inject NotificationService NotificationService
+@inject NavigationManager NavigationManager
+@inject ToastService ToastService
+
+<h3>Lịch sử thông báo</h3>
+
+@if (notifications == null)
+{
+    <p><em>Đang tải lịch sử...</em></p>
+}
+// <<< THAY ĐỔI: Sửa lại câu thông báo
+else if (!notifications.Any())
+{
+    <p>Bạn không có thông báo nào.</p>
+}
+else
+{
+    <button class="btn btn-primary mb-3" @onclick="HandleMarkAllAsRead">
+        <span class="oi oi-check-circle"></span> Đánh dấu tất cả đã đọc
+    </button>
+
+    <div class="list-group">
+        @foreach (var notification in notifications)
+        {
+            // Thêm class 'text-muted' cho các thông báo đã đọc
+            <a @onclick="() => HandleNotificationClick(notification)" class="list-group-item list-group-item-action flex-column align-items-start @(notification.IsRead ? "text-muted" : "")" style="cursor: pointer;">
+                <div class="d-flex w-100 justify-content-between">
+                    <p class="mb-1">@notification.Message</p>
+                    <small>@notification.CreatedAt.ToLocalTime().ToString("HH:mm dd/MM/yyyy")</small>
+                </div>
+            </a>
+        }
+    </div>
+}
+
+@code {
+    private List<Notification>? notifications;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // <<< THAY ĐỔI: Gọi phương thức lấy tất cả thông báo
+        notifications = await NotificationService.GetAllNotificationsAsync();
+    }
+
+    private async Task HandleMarkAllAsRead()
+    {
+        var success = await NotificationService.MarkAllAsReadAsync();
+        if (success)
+        {
+            ToastService.ShowToast("Đã đánh dấu tất cả thông báo là đã đọc.", ToastLevel.Success);
+
+            // <<< THAY ĐỔI: Cập nhật trạng thái trên UI thay vì xóa
+            if (notifications != null)
+            {
+                foreach (var notification in notifications)
+                {
+                    notification.IsRead = true;
+                }
+            }
+        }
+        else
+        {
+            ToastService.ShowToast("Có lỗi xảy ra, vui lòng thử lại.", ToastLevel.Danger);
+        }
+    }
+
+    private void HandleNotificationClick(Notification notification)
+    {
+        if (!string.IsNullOrEmpty(notification.Link))
+        {
+            NavigationManager.NavigateTo(notification.Link);
+        }
+    }
+}

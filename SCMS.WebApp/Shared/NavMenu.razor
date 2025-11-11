@@ -1,0 +1,175 @@
+﻿@* File: SCMS.WebApp/Shared/NavMenu.razor *@
+<div class="top-row ps-3 navbar navbar-dark" style="background-color: var(--primary-color);">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">
+            <span class="oi oi-restaurant" aria-hidden="true"></span> Smart Canteen
+        </a>
+        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+</div>
+
+<div class="@NavMenuCssClass" @onclick="ToggleNavMenu">
+    <nav class="flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="oi oi-home" aria-hidden="true"></span> Home
+            </NavLink>
+        </div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="menu">
+                <span class="oi oi-list-rich" aria-hidden="true"></span> Thực đơn
+            </NavLink>
+        </div>
+        @* <AuthorizeView> *@
+        @*     <Authorized> *@
+        @*         <div class="nav-item px-3"> *@
+        @*             <NavLink class="nav-link" href="cart"> *@
+        @*                 <span class="oi oi-cart" aria-hidden="true"></span> Giỏ hàng *@
+        @*             </NavLink> *@
+        @*         </div> *@
+        @*     </Authorized> *@
+        @* </AuthorizeView> *@
+
+        <AuthorizeView>
+            <Authorized>
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="profile">
+                        <span class="oi oi-person" aria-hidden="true"></span> Hồ sơ của tôi
+                    </NavLink>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+
+        @* Hiển thị cho người dùng đã đăng nhập (customer) *@
+        <AuthorizeView Roles="Student">
+            <li class="nav-item px-3">
+                <hr style="background-color: white;" />
+                <h6 class="text-white-50">Chức năng Học Sinh</h6>
+            </li>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="my-orders">
+                    <span class="oi oi-clock" aria-hidden="true"></span> Lịch sử Đặt hàng
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="spending-report">
+                    <span class="oi oi-bar-chart" aria-hidden="true"></span> Báo cáo Chi tiêu
+                </NavLink>
+            </div>
+        </AuthorizeView>
+        <AuthorizeView Roles="Parent">
+            <li class="nav-item px-3">
+                <hr style="background-color: white;" />
+                <h6 class="text-white-50">Chức năng Phụ huynh</h6>
+            </li>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="parent-dashboard">
+                    <span class="oi oi-dashboard" aria-hidden="true"></span> Bảng điều khiển
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="spending-report">
+                    <span class="oi oi-bar-chart" aria-hidden="true"></span> Báo cáo Chi tiêu
+                </NavLink>
+            </div>
+        </AuthorizeView>
+        <AuthorizeView Roles="CanteenStaff">
+            <li class="nav-item px-3">
+                <hr style="background-color: white;" />
+                <h6 class="text-white-50">Chức năng Nhân Viên</h6>
+            </li>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="admin/orders">
+                    <span class="oi oi-list" aria-hidden="true"></span> Quản lý Đơn hàng
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="admin/order-history">
+                    <span class="oi oi-clock" aria-hidden="true"></span> Lịch sử Đơn hàng
+                </NavLink>
+            </div>
+        </AuthorizeView>
+        @* Nhóm các chức năng quản lý cho CanteenManager và SystemAdmin *@
+        <AuthorizeView Roles="CanteenManager">
+            <li class="nav-item px-3">
+                <hr style="background-color: white;" />
+                <h6 class="text-white-50">Chức năng Quản lý</h6>
+            </li>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="reports/sales">
+                    <span class="oi oi-bar-chart" aria-hidden="true"></span> Báo cáo
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="admin/menu">
+                    <span class="oi oi-book" aria-hidden="true"></span> Quản lý Thực đơn
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="admin/orders">
+                    <span class="oi oi-list" aria-hidden="true"></span> Quản lý Đơn hàng
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="admin/order-history">
+                    <span class="oi oi-clock" aria-hidden="true"></span> Lịch sử Đơn hàng
+                </NavLink>
+            </div>
+        </AuthorizeView>
+        <AuthorizeView Roles="SystemAdmin">
+            <li class="nav-item px-3">
+                <hr style="background-color: white;" />
+                <h6 class="text-white-50">Chức năng Quản trị viên</h6>
+            </li>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="reports/sales">
+                    <span class="oi oi-bar-chart" aria-hidden="true"></span> Báo cáo
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="admin/menu">
+                    <span class="oi oi-book" aria-hidden="true"></span> Quản lý Thực đơn
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="admin/orders">
+                    <span class="oi oi-list" aria-hidden="true"></span> Quản lý Đơn hàng
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="admin/users">
+                    <span class="oi oi-people" aria-hidden="true"></span> Quản lý Người dùng
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="admin/order-history">
+                    <span class="oi oi-clock" aria-hidden="true"></span> Lịch sử Đơn hàng
+                </NavLink>
+            </div>
+        </AuthorizeView>
+        <AuthorizeView Roles="SchoolAdministration">
+            <li class="nav-item px-3">
+                <hr style="background-color: white;" />
+                <h6 class="text-white-50">Chức năng School Admin User</h6>
+            </li>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="reports/sales">
+                    <span class="oi oi-bar-chart" aria-hidden="true"></span> Báo cáo
+                </NavLink>
+            </div>
+        </AuthorizeView>
+
+    </nav>
+</div>
+
+@code {
+    private bool collapseNavMenu = true;
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+}

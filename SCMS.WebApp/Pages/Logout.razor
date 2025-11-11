@@ -1,0 +1,14 @@
+﻿@page "/logout"
+@inject AuthService AuthService
+@inject NavigationManager NavigationManager
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        // Sửa ở đây: Gọi đúng tên hàm là LogoutAsync
+        await AuthService.LogoutAsync();
+
+        // Chuyển hướng người dùng về trang chủ sau khi đăng xuất
+        NavigationManager.NavigateTo("/", forceLoad: true);
+    }
+}
