@@ -32,7 +32,7 @@ namespace SCMS.Infrastructure
                 .HasMany(u => u.LinkedStudents)
                 .WithOne(u => u.Parent)
                 .HasForeignKey(u => u.ParentId)
-                .OnDelete(DeleteBehavior.Restrict); 
+                .OnDelete(DeleteBehavior.Restrict);
 
             // Cấu hình quan hệ cho Transaction
             modelBuilder.Entity<Transaction>()

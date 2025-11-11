@@ -268,12 +268,30 @@ namespace SCMS.Application
             return true;
         }
 
+        // Code mới đã sửa
         public async Task<bool> DeleteUserAsync(int userId)
         {
             var user = await _context.Users.FindAsync(userId);
             if (user == null) return false;
 
+            // --- THÊM LOGIC MỚI TẠI ĐÂY ---
+            // 1. Tìm tất cả "con" (Students) đang liên kết với "cha" (Parent) này
+            var children = await _context.Users
+                .Where(u => u.ParentId == userId)
+                .ToListAsync();
+
+            // 2. Ngắt liên kết: Cập nhật ParentId của tất cả "con" thành null
+            foreach (var child in children)
+            {
+                child.ParentId = null;
+            }
+            // --- HẾT LOGIC MỚI ---
+
+            // 3. Xóa người dùng (cha)
             _context.Users.Remove(user);
+
+            // 4. Lưu tất cả thay đổi (cả việc cập nhật 'children' và xóa 'user')
+            //    trong cùng một giao dịch (transaction).
             await _context.SaveChangesAsync();
             return true;
         }

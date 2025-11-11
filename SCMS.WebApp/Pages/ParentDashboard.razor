@@ -61,7 +61,7 @@ else
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="amount" class="form-label">Số tiền cần nạp (VND)</label>
-                        <input type="number" id="amount" class="form-control" @bind="_topUpAmount" placeholder="Ví dụ: 50000" />
+                        <InputText id="topUpAmount" class="form-control" @bind-Value="_topUpAmountString" />
                     </div>
                     @if (!string.IsNullOrEmpty(_errorMessage))
                     {
@@ -70,12 +70,8 @@ else
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" @onclick="CloseModal">Hủy</button>
-                    <button type="button" class="btn btn-primary" @onclick="HandleTopUp" disabled="_isProcessing">
-                        @if (_isProcessing)
-                        {
-                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                        }
-                        Xác nhận
+                    <button type="button" class="btn btn-primary" @onclick="HandleTopUp" disabled="@(_isProcessing || string.IsNullOrWhiteSpace(_topUpAmountString))">
+                        @(_isProcessing ? "Đang xử lý..." : "Xác nhận")
                     </button>
                 </div>
             </div>
@@ -147,7 +143,7 @@ else
     private string? _errorMessage;
 
     private User? _selectedStudent;
-    private decimal _topUpAmount = 50000;
+    private string _topUpAmountString = "50000";
     private List<TransactionDetailsDto>? _studentHistory;
 
     protected override async Task OnInitializedAsync()
@@ -160,20 +156,36 @@ else
         _selectedStudent = student;
         _showTopUpModal = true;
         _errorMessage = null;
-        _topUpAmount = 50000;
+        _topUpAmountString = "50000";
     }
 
     private async Task HandleTopUp()
     {
-        if (_selectedStudent == null || _topUpAmount <= 0)
+        var cleanAmountString = _topUpAmountString.Replace(".", "").Replace(",", "");
+
+        // 2. Chuyển chuỗi thành số decimal
+        if (!decimal.TryParse(cleanAmountString, out decimal parsedAmount))
         {
-            _errorMessage = "Số tiền không hợp lệ.";
+            _errorMessage = "Số tiền không hợp lệ. Vui lòng chỉ nhập số.";
+            return;
+        }
+
+        // 3. Kiểm tra logic nghiệp vụ (giống DTO)
+        if (parsedAmount < 10000 || parsedAmount > 5000000)
+        {
+            _errorMessage = "Số tiền nạp phải từ 10,000 đến 5,000,000 VND.";
+            return;
+        }
+
+        if (_selectedStudent == null)
+        {
+            _errorMessage = "Lỗi: Không xác định được học sinh.";
             return;
         }
 
         _isProcessing = true;
         _errorMessage = null;
-        var request = new TopUpRequestDto { Amount = _topUpAmount };
+        var request = new TopUpRequestDto { Amount = parsedAmount };
 
         var result = await WebWalletService.TopUpForStudentAsync(_selectedStudent.UserId, request);
         if (result.Success)
@@ -188,6 +200,7 @@ else
             _errorMessage = result.Message;
         }
         _isProcessing = false;
+        StateHasChanged();
     }
 
     private async Task OpenHistoryModal(User student)
