@@ -1,0 +1,35 @@
+# Workflow này để build và test một ứng dụng .NET Web
+name: .NET Web App CI
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    # Ứng dụng web có thể build trên Linux (nhanh và rẻ hơn)
+    runs-on: ubuntu-latest 
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    # Cài đặt phiên bản .NET Core (sửa lại nếu bạn dùng bản cũ hơn)
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 8.0.x 
+
+    # Phục hồi các gói (dependencies) - SỬ DỤNG TÊN SOLUTION CỦA BẠN
+    - name: Restore dependencies
+      run: dotnet restore SmartCanteenSystem.sln
+
+    # Build dự án ở chế độ Release - SỬ DỤNG TÊN SOLUTION CỦA BẠN
+    - name: Build
+      run: dotnet build SmartCanteenSystem.sln --no-restore --configuration Release
+
+    # Chạy unit test (nếu có)
+    - name: Test
+      run: dotnet test SmartCanteenSystem.sln --no-build --verbosity normal
